@@ -8,7 +8,7 @@
   window.__IGFS_ACTIVE__ = true;
 
   // ---------- Version ----------
-  const VERSION = '2.3.5';
+  const VERSION = '0.10';
 
   // ---------- Shorthands ----------
   const $  = (sel, root=document) => root.querySelector(sel);
