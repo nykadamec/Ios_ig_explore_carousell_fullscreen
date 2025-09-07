@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         IG Explore → Fullscreen Swipe (Loader)
 // @namespace    ig-explore-fullscreen
-// @version      0.12
-// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Umí i autoupdate samotného userscriptu a přepnutí BASE.
+// @version      0.13
+// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly.
 // @author       nykadamec
 // @match        https://www.instagram.com/*explore*
 // @match        https://www.instagram.com/explore/*
@@ -22,29 +22,23 @@
 (function () {
   'use strict';
 
-  // -------- Singleton guard --------
   if (window.__IGFS_LOADER__) return;
   window.__IGFS_LOADER__ = true;
 
-  // ====== KONFIGURACE LOADERU ======
-  // Výchozí BASE ukazuje na *main* větev do složky /app/
+  // ====== LOADER CONFIG ======
   const DEFAULT_BASE =
-    'https://raw.githubusercontent.com/nykadamec/Ios_ig_explore_carousell_fullscreen/main/app/';
-
-  // Klíč pro uložení vlastního BASE (např. test branch/commit)
+    'https://raw.githubusercontent.com/nykadamec/Ios_ig_explore_carousell_fullscreen/main/app/'; // musí končit /app/
   const BASE_OVERRIDE_KEY = 'IGFS_APP_BASE';
-
-  // Lokální cache staženého /app/main.js
   const CACHE_KEY = 'IGFS_APP_CACHE_v1';
 
-  // ====== KONFIGURACE AUTOUPDATE USERSCRIPTU ======
+  // ====== USERSCRIPT AUTUPDATE ======
   const USERJS_RAW_URL =
     'https://raw.githubusercontent.com/nykadamec/Ios_ig_explore_carousell_fullscreen/main/userscript.js';
   const USERJS_INSTALL_URL = USERJS_RAW_URL;
   const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
   const LAST_CHECK_KEY = 'IGFS_USERJS_LAST_UPDATE_CHECK';
 
-  // ====== HELPERY ======
+  // ====== HELPERS ======
   const getBase = () => {
     try {
       const gm = typeof GM_getValue === 'function' ? GM_getValue(BASE_OVERRIDE_KEY) : null;
@@ -62,7 +56,6 @@
     try { GM_setValue && GM_setValue(BASE_OVERRIDE_KEY, clean); } catch {}
     try { localStorage.setItem(BASE_OVERRIDE_KEY, clean); } catch {}
   };
-
   const clearBase = () => setBase('');
 
   const saveCache = (code) => {
@@ -104,7 +97,7 @@
       });
     });
 
-  // ====== AUTUPDATE USERSCRIPTU ======
+  // ====== AUTUPDATE USERSCRIPT ======
   const getCurrentVersion = () => {
     try {
       return (typeof GM_info !== 'undefined' && GM_info.script && GM_info.script.version)
@@ -129,7 +122,7 @@
   const parseVersionFromUserJS = (code) => {
     const m = code.match(/@version\s+([^\s]+)/);
     return m ? m[1].trim() : null;
-    };
+  };
 
   const shouldCheckUpdate = () => {
     try {
@@ -208,17 +201,32 @@
 
   // ====== BOOT APP ======
   (async function bootApp() {
-    // 1) Nastav globální BASE, aby si ho /app/main.js převzal pro načtení modulů
+    // 1) Nastav BASE globálně, aby si ho /app/main.js převzal
     const base = getBase();
     window.__IGFS_BASE_RAW__ = base;
 
-    // 2) Sestav URL na /app/main.js z BASE
-    const src = base + 'main.js';
+    // 2) GM wrapper zpřístupnit i eval-nutým modulům
+    window.__IGFS_GM_FETCH__ = function (url, timeout = 20000) {
+      return new Promise((resolve, reject) => {
+        GM_xmlhttpRequest({
+          method: 'GET',
+          url,
+          headers: { 'Cache-Control': 'no-cache' },
+          timeout,
+          onload: (r) => (r.status >= 200 && r.status < 300)
+            ? resolve(r.responseText)
+            : reject(new Error('HTTP ' + r.status)),
+          onerror: () => reject(new Error('Network error')),
+          ontimeout: () => reject(new Error('Timeout')),
+        });
+      });
+    };
 
+    // 3) Stáhni a spusť /app/main.js
+    const src = base + 'main.js';
     try {
       const code = await fetchText(src);
       saveCache(code);
-      // eval s přátelským sourceURL kvůli stackům
       evalWithSourceURL(code, src);
       console.info('[IGFS Loader] Loaded app from BASE:', base);
     } catch (e) {
@@ -226,11 +234,11 @@
       const cached = loadCache();
       if (cached?.code) {
         console.info('[IGFS Loader] Using cached app bundle from', new Date(cached.ts).toISOString(), 'BASE:', cached.base);
-        // Předat i cached BASE, pokud je k dispozici
         if (cached.base) window.__IGFS_BASE_RAW__ = cached.base;
         evalWithSourceURL(cached.code, 'cache:/app/main.js');
       } else {
         console.error('[IGFS Loader] No cache available. App not started.');
+        alert('IGFS failed to load modules. See console for details.');
       }
     }
   })();
