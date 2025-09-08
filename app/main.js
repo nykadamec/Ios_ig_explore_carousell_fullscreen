@@ -1,5 +1,5 @@
 // /app/main.js
-// IG Explore → Fullscreen Swipe (iOS-only) — Module Orchestrator
+// IG Explore → Fullscreen Swipe (iOS-only) — Module Orchestrator v0.19.8 (2025-09-08)
 // Načte moduly z /app/* (BASE z window.__IGFS_BASE_RAW__), poté spustí App.init()
 
 (function () {
@@ -45,9 +45,32 @@
 
   async function loadModule(filename) {
     const url = BASE + filename;
-    const code = await gmFetchText(url);
-    // Každý modul exportuje přes window.IGFS.*
-    new Function(code + `\n//# sourceURL=${url}`)();
+    try {
+      const code = await gmFetchText(url);
+      // Každý modul exportuje přes window.IGFS.*
+      new Function(code + `\n//# sourceURL=${url}`)();
+      
+      // Kontrola, zda modul správně exportoval do IGFS
+      if (filename === 'ui.js' && (!window.IGFS || !window.IGFS.UI)) {
+        throw new Error('UI module loaded but IGFS.UI not exported');
+      }
+      if (filename === 'icons.js' && (!window.IGFS || !window.IGFS.ti)) {
+        throw new Error('Icons module loaded but IGFS.ti not exported');
+      }
+      if (filename === 'app.js' && (!window.IGFS || !window.IGFS.App)) {
+        throw new Error('App module loaded but IGFS.App not exported');
+      }
+      
+      IGFS.Console.log(`[IGFS] Module ${filename} loaded and exported correctly`);
+    } catch (moduleError) {
+      IGFS.Console.error(`[IGFS] Detailed error loading ${filename}:`, {
+        message: moduleError.message,
+        stack: moduleError.stack,
+        url: url,
+        codeLength: code ? code.length : 'unknown'
+      });
+      throw new Error(`Module load failed: ${filename} - ${moduleError.message}`);
+    }
   }
 
   // ---------- Pořadí modulů ----------

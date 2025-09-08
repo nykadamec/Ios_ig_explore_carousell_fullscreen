@@ -1,23 +1,24 @@
 // /app/ui.js
 (function(){
   'use strict';
-  const IGFS = (window.IGFS = window.IGFS || {});
-  // Zkontroluj dostupnost ti funkce
-  let ti = IGFS.ti;
-  if (!ti) {
-    if (window.IGFS && window.IGFS.Console) {
-      window.IGFS.Console.error('[IGFS UI] ti function not available, using fallback');
+  try {
+    const IGFS = (window.IGFS = window.IGFS || {});
+    // Zkontroluj dostupnost ti funkce
+    let ti = IGFS.ti;
+    if (!ti) {
+      if (window.IGFS && window.IGFS.Console) {
+        window.IGFS.Console.error('[IGFS UI] ti function not available, using fallback');
+      }
+      ti = (name, size = 18) => `<span style="font-size:${size}px;">${name}</span>`;
     }
-    ti = (name, size = 18) => `<span style="font-size:${size}px;">${name}</span>`;
-  }
 
-  // Debug log na začátku
-  if (window.IGFS && window.IGFS.Console) {
-    window.IGFS.Console.log('[IGFS UI] Starting UI module initialization, ti function available:', !!ti);
-  }
+    // Debug log na začátku
+    if (window.IGFS && window.IGFS.Console) {
+      window.IGFS.Console.log('[IGFS UI] Starting UI module initialization, ti function available:', !!ti);
+    }
 
-  // Vytvoření UI
-  const overlay = document.createElement('div'); overlay.className='igfs-overlay';
+    // Vytvoření UI
+    const overlay = document.createElement('div'); overlay.className='igfs-overlay';
   const track   = document.createElement('div'); track.className='igfs-track';
   const idxLab  = document.createElement('div'); idxLab.className='igfs-index';
   const closeBtn = document.createElement('button'); closeBtn.className='igfs-btn igfs-close'; closeBtn.innerHTML = ti('x',16);
@@ -188,7 +189,7 @@
     hideOverlay(){ overlay.classList.remove('igfs-show'); document.body.classList.remove('igfs-overlay-active'); },
     showLoading(){ loadingIndicator.style.display = 'flex'; },
     hideLoading(){ loadingIndicator.style.display = 'none'; },
-    updateLoadingText(text) { 
+    updateLoadingText(text) {
       const span = loadingIndicator.querySelector('span');
       if (span) span.textContent = text;
     },
@@ -206,4 +207,14 @@
       }
     }
   };
+
+  if (window.IGFS && window.IGFS.Console) {
+    window.IGFS.Console.log('[IGFS UI] IGFS.UI successfully exported');
+  }
+} catch (uiError) {
+  if (window.IGFS && window.IGFS.Console) {
+    window.IGFS.Console.error('[IGFS UI] Module execution failed:', uiError);
+  }
+  throw uiError; // Re-throw pro zachycení v main.js
+}
 })();
