@@ -139,28 +139,46 @@
 
   function addDebugStyles() {
     const debugCss = `
-    .igfs-debug-panel{position:absolute;right:10px;top:50px;bottom:80px;width:350px;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:12px;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 40px rgba(0,0,0,.6);z-index:1000;overflow:hidden;transform:translateX(100%);opacity:0;transition:all 0.3s cubic-bezier(0.2, 0, 0.2, 1)}
+    .igfs-debug-panel{position:fixed;right:8px;top:60px;bottom:90px;width:min(380px, calc(100vw - 16px));background:rgba(0,0,0,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:16px;border:1px solid rgba(255,255,255,.15);box-shadow:0 25px 50px rgba(0,0,0,.8);z-index:10000;overflow:hidden;transform:translateX(100%);opacity:0;transition:all 0.4s cubic-bezier(0.2, 0, 0.2, 1);touch-action:manipulation}
     .igfs-debug-panel.igfs-debug-show{transform:translateX(0);opacity:1}
     
-    .igfs-debug-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.08)}
-    .igfs-debug-title{font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;display:flex;align-items:center;gap:6px}
-    .igfs-debug-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;padding:4px;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:background-color .2s}
-    .igfs-debug-close:hover{background:rgba(255,255,255,.1);color:#fff}
+    .igfs-debug-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.12)}
+    .igfs-debug-title{font:600 15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;display:flex;align-items:center;gap:8px}
+    .igfs-debug-close{background:none;border:none;color:rgba(255,255,255,.8);cursor:pointer;padding:8px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .3s ease;touch-action:manipulation;min-width:44px;min-height:44px}
+    .igfs-debug-close:hover{background:rgba(255,255,255,.15);color:#fff;transform:scale(1.05)}
+    .igfs-debug-close:active{transform:scale(.95)}
     
-    .igfs-debug-content{height:100%;overflow-y:auto;padding:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
-    .igfs-debug-content::-webkit-scrollbar{width:6px}
+    @media (max-width: 480px) {
+      .igfs-debug-panel{right:4px;top:60px;bottom:80px;width:calc(100vw - 8px);border-radius:12px}
+      .igfs-debug-header{padding:12px 16px}
+      .igfs-debug-title{font-size:14px}
+      .igfs-debug-section{padding:12px 16px}
+      .igfs-debug-section-title{font-size:13px}
+      .igfs-debug-metric{font-size:12px}
+      .igfs-debug-value{font-size:11px}
+      .igfs-debug-action-btn{padding:10px 14px;font-size:12px;min-height:40px}
+    }
+    
+    @media (max-height: 600px) {
+      .igfs-debug-panel{top:40px;bottom:60px}
+      .igfs-debug-section{padding:10px 16px}
+      .igfs-debug-metrics{gap:8px}
+    }
+    
+    .igfs-debug-content{height:100%;overflow-y:auto;padding:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent;-webkit-overflow-scrolling:touch}
+    .igfs-debug-content::-webkit-scrollbar{width:8px}
     .igfs-debug-content::-webkit-scrollbar-track{background:transparent}
-    .igfs-debug-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:3px}
-    .igfs-debug-content::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5)}
+    .igfs-debug-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.4);border-radius:4px}
+    .igfs-debug-content::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.6)}
     
-    .igfs-debug-section{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .igfs-debug-section{padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
     .igfs-debug-section:last-child{border-bottom:none}
-    .igfs-debug-section-title{font:600 12px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:rgba(255,255,255,.9);margin-bottom:8px;display:flex;align-items:center;gap:4px}
+    .igfs-debug-section-title{font:600 14px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:rgba(255,255,255,.95);margin-bottom:12px;display:flex;align-items:center;gap:6px}
     
-    .igfs-debug-metrics{display:flex;flex-direction:column;gap:6px}
-    .igfs-debug-metric{display:flex;justify-content:space-between;align-items:center;font:400 11px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-    .igfs-debug-label{color:rgba(255,255,255,.7);flex:1}
-    .igfs-debug-value{color:#fff;font-weight:500;text-align:right;max-width:50%;word-break:break-all;font-size:10px}
+    .igfs-debug-metrics{display:flex;flex-direction:column;gap:10px}
+    .igfs-debug-metric{display:flex;justify-content:space-between;align-items:center;font:400 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;min-height:24px}
+    .igfs-debug-label{color:rgba(255,255,255,.8);flex:1;padding-right:8px}
+    .igfs-debug-value{color:#fff;font-weight:600;text-align:right;max-width:55%;word-break:break-all;font-size:12px}
     
     .igfs-debug-log{max-height:120px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;font:400 10px 'SF Mono',Consolas,monospace;scrollbar-width:thin}
     .igfs-debug-log::-webkit-scrollbar{width:4px}
@@ -171,10 +189,10 @@
     .igfs-debug-log-entry.success{color:#51cf66}
     .igfs-debug-log-entry.warning{color:#ffd43b}
     
-    .igfs-debug-actions{display:flex;flex-direction:column;gap:6px}
-    .igfs-debug-action-btn{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:8px 12px;font:500 11px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;transition:all .2s;text-align:left}
-    .igfs-debug-action-btn:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)}
-    .igfs-debug-action-btn:active{transform:scale(.98)}
+    .igfs-debug-actions{display:flex;flex-direction:column;gap:10px}
+    .igfs-debug-action-btn{background:rgba(255,255,255,.1);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:12px 16px;font:500 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;transition:all .3s ease;text-align:left;touch-action:manipulation;min-height:44px;display:flex;align-items:center}
+    .igfs-debug-action-btn:hover{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.3);transform:translateY(-1px)}
+    .igfs-debug-action-btn:active{transform:translateY(0) scale(.98);background:rgba(255,255,255,.25)}
     `;
     
     const styleTag = document.createElement('style'); 
