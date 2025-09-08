@@ -45,12 +45,15 @@
   
   overlay.append(track, idxLab, closeBtn, loadingIndicator, menu);
 
+  // Definovat toggleBtn na vyšší úrovni aby byl dostupný v setVersion
+  let toggleBtn;
+
   // Přidat overlay do DOM
   if (document.body) {
     document.body.appendChild(overlay);
 
     // Vytvoření toggle buttonu pro fullscreen mód
-    const toggleBtn = document.createElement('button');
+    toggleBtn = document.createElement('button');
     toggleBtn.className='igfs-fab';
     toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
     document.body.appendChild(toggleBtn);
@@ -65,7 +68,7 @@
     // Defer UI creation until DOM is ready
     document.addEventListener('DOMContentLoaded', () => {
       document.body.appendChild(overlay);
-      const toggleBtn = document.createElement('button');
+      toggleBtn = document.createElement('button');
       toggleBtn.className='igfs-fab';
       toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
       document.body.appendChild(toggleBtn);
@@ -193,7 +196,12 @@
       const span = loadingIndicator.querySelector('span');
       if (span) span.textContent = text;
     },
-    setVersion(v){ const e = toggleBtn.querySelector('.igfs-version'); if (e) e.textContent = 'v'+v; },
+    setVersion(v){ 
+      if (toggleBtn) {
+        const e = toggleBtn.querySelector('.igfs-version'); 
+        if (e) e.textContent = 'v'+v;
+      }
+    },
     
     // Debug integration
     initDebug() {
