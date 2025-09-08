@@ -357,12 +357,148 @@
     
     // Capture unhandled errors
     window.addEventListener('error', (event) => {
-      addLogEntry('error', `Unhandled error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`);
+      const errorMsg = `Unhandled error: ${event.message} at ${event.filename}:${event.lineno}:${event.colno}`;
+      addLogEntry('error', errorMsg);
+      
+      // Special handling for "IGFS failed to load modules" error
+      if (event.message && event.message.includes("IGFS failed to load modules")) {
+        addLogEntry('error', `🚨 IGFS MODULE LOADING FAILURE DETECTED!`);
+        addLogEntry('error', `🔴 Critical system error: IGFS failed to load modules`);
+        addLogEntry('error', `📋 Diagnostic information:`);
+        
+        // Immediate IGFS state check
+        const igfsState = window.IGFS ? Object.keys(window.IGFS) : [];
+        addLogEntry('error', `   📊 Available IGFS modules: ${igfsState.length ? igfsState.join(', ') : 'NONE'}`);
+        
+        // Check critical modules
+        const criticalModules = [
+          { name: 'App', key: 'App', file: 'app.js' },
+          { name: 'UI', key: 'UI', file: 'ui.js' },
+          { name: 'Icons', key: 'ti', file: 'icons.js' },
+          { name: 'Utils', key: 'VERSION', file: 'utils.js' },
+          { name: 'Console', key: 'Console', file: 'console.js' },
+          { name: 'Debug', key: 'Debug', file: 'debug.js' },
+          { name: 'Infinite', key: 'Infinite', file: 'infinite.js' },
+          { name: 'Collect', key: 'Collect', file: 'collect.js' },
+          { name: 'Preload', key: 'Preload', file: 'preload.js' }
+        ];
+        
+        criticalModules.forEach(module => {
+          const isLoaded = window.IGFS && window.IGFS[module.key];
+          const status = isLoaded ? '✅' : '❌';
+          addLogEntry('error', `   ${status} ${module.name} (${module.file}): ${isLoaded ? 'LOADED' : 'MISSING'}`);
+        });
+        
+        addLogEntry('error', `🔧 Suggested recovery actions:`);
+        addLogEntry('error', `   1. Check browser console for script loading errors`);
+        addLogEntry('error', `   2. Verify userscript manager is working properly`);
+        addLogEntry('error', `   3. Check if GM_xmlhttpRequest is available`);
+        addLogEntry('error', `   4. Refresh page to retry module loading`);
+        addLogEntry('error', `   5. Check network connection and try again`);
+        
+        // Trigger module health check after a delay
+        setTimeout(() => checkIGFSModuleHealth(), 500);
+        
+        return; // Skip generic module error handling
+      }
+      
+      // Generic IGFS module loading error detection
+      if (event.message && (
+        event.message.includes("Can't find variable") ||
+        event.message.includes("ReferenceError") ||
+        event.message.includes("TypeError") ||
+        event.message.includes("SyntaxError")
+      )) {
+        addLogEntry('error', `🚨 CRITICAL: Possible module loading issue detected!`);
+        addLogEntry('error', `💡 Check module order and dependencies in main.js`);
+        addLogEntry('error', `🔍 Error details: ${event.message}`);
+        
+        // Check current IGFS state
+        setTimeout(() => {
+          const igfsState = window.IGFS ? Object.keys(window.IGFS) : [];
+          addLogEntry('info', `📊 Current IGFS modules: ${igfsState.join(', ')}`);
+          
+          if (!window.IGFS || !window.IGFS.App) {
+            addLogEntry('error', `❌ IGFS.App not loaded - module loading failed!`);
+          }
+          if (!window.IGFS || !window.IGFS.UI) {
+            addLogEntry('error', `❌ IGFS.UI not loaded - check ui.js dependency`);
+          }
+          if (!window.IGFS || !window.IGFS.ti) {
+            addLogEntry('error', `❌ IGFS.ti not loaded - check icons.js dependency`);
+          }
+        }, 100);
+      }
     });
     
     window.addEventListener('unhandledrejection', (event) => {
-      addLogEntry('error', `Unhandled promise rejection: ${event.reason}`);
+      const rejectionMsg = `Unhandled promise rejection: ${event.reason}`;
+      addLogEntry('error', rejectionMsg);
+      
+      // Special handling for module loading promise rejections
+      if (event.reason && event.reason.toString().includes('Module load failed')) {
+        addLogEntry('error', `🚨 MODULE LOADING FAILURE DETECTED!`);
+        addLogEntry('error', `💥 Reason: ${event.reason}`);
+        addLogEntry('error', `🔧 Suggested fixes:`);
+        addLogEntry('error', `   1. Check network connectivity`);
+        addLogEntry('error', `   2. Verify module URLs in main.js`);
+        addLogEntry('error', `   3. Check browser console for syntax errors`);
+        addLogEntry('error', `   4. Ensure GM_xmlhttpRequest is available`);
+      }
     });
+  }
+  
+  // IGFS Module Health Check Function
+  function checkIGFSModuleHealth() {
+    addLogEntry('info', '🔍 Performing IGFS module health check...');
+    
+    const requiredModules = [
+      { name: 'App', key: 'App', critical: true },
+      { name: 'UI', key: 'UI', critical: true },
+      { name: 'Icons', key: 'ti', critical: true },
+      { name: 'Utils', key: 'VERSION', critical: true },
+      { name: 'Console', key: 'Console', critical: false },
+      { name: 'Debug', key: 'Debug', critical: false },
+      { name: 'Infinite', key: 'Infinite', critical: true },
+      { name: 'Collect', key: 'Collect', critical: false },
+      { name: 'Preload', key: 'Preload', critical: false }
+    ];
+    
+    let totalModules = requiredModules.length;
+    let loadedModules = 0;
+    let criticalMissing = 0;
+    
+    requiredModules.forEach(module => {
+      const isLoaded = window.IGFS && window.IGFS[module.key];
+      if (isLoaded) {
+        loadedModules++;
+      } else if (module.critical) {
+        criticalMissing++;
+      }
+    });
+    
+    const healthPercentage = Math.round((loadedModules / totalModules) * 100);
+    
+    if (criticalMissing === 0) {
+      addLogEntry('info', `✅ Module health check complete: ${healthPercentage}% (${loadedModules}/${totalModules} modules loaded)`);
+    } else {
+      addLogEntry('error', `❌ Module health check failed: ${criticalMissing} critical modules missing`);
+      addLogEntry('error', `📊 Overall health: ${healthPercentage}% (${loadedModules}/${totalModules} modules loaded)`);
+    }
+    
+    // Check userscript environment
+    if (typeof GM_xmlhttpRequest === 'undefined') {
+      addLogEntry('error', '❌ GM_xmlhttpRequest not available - userscript manager issue');
+    } else {
+      addLogEntry('info', '✅ GM_xmlhttpRequest available');
+    }
+    
+    // Check if we're in the right domain
+    if (!location.hostname.includes('instagram.com')) {
+      addLogEntry('warn', '⚠️ Not running on Instagram domain');
+    } else {
+      addLogEntry('info', '✅ Running on Instagram domain');
+    }
   }
   
   // Public API
