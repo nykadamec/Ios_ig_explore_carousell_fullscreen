@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         IG Explore → Fullscreen Swipe (Loader)
 // @namespace    ig-explore-fullscreen
-// @version      0.19.8
-// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.19.8: Aktualizace verze a data poslední aktualizace - 2025-09-08. Oprava kritických chyb (nedefinované proměnné, syntax chyby), implementace bridge.js pro centralizované propojení modulů, standardizace kódovacího stylu, odstranění debug console.log statements. Vylepšená stabilita a výkon.
+// @version      0.19.9
+// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.19.9: Oprava kritické chyby načítání modulů - přidání console.js do seznamu modulů, oprava pořadí závislostí, vytvoření základního Console objektu před načítáním modulů. Vyřešení selhání UI modulu při spouštění.
 // @author       nykadamec
 // @match        https://www.instagram.com/*explore*
 // @match        https://www.instagram.com/explore/*

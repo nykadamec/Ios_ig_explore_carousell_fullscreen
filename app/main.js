@@ -8,6 +8,28 @@
   if (window.__IGFS_ACTIVE__) return;
   window.__IGFS_ACTIVE__ = true;
 
+  // ---------- Initialize IGFS namespace and basic Console ----------
+  const IGFS = (window.IGFS = window.IGFS || {});
+  
+  // Create minimal Console object to prevent errors during module loading
+  IGFS.Console = {
+    log: function(...args) { 
+      console.log('[IGFS]', ...args); 
+    },
+    error: function(...args) { 
+      console.error('[IGFS]', ...args); 
+    },
+    warn: function(...args) { 
+      console.warn('[IGFS]', ...args); 
+    },
+    info: function(...args) { 
+      console.info('[IGFS]', ...args); 
+    },
+    debug: function(...args) { 
+      console.debug('[IGFS]', ...args); 
+    }
+  };
+
   // ---------- BASE ----------
   // Preferuj BASE z loaderu; fallback na main/app/
   const DEFAULT_BASE =
@@ -45,12 +67,16 @@
 
   async function loadModule(filename) {
     const url = BASE + filename;
+    let code;
     try {
-      const code = await gmFetchText(url);
+      code = await gmFetchText(url);
       // Každý modul exportuje přes window.IGFS.*
       new Function(code + `\n//# sourceURL=${url}`)();
       
       // Kontrola, zda modul správně exportoval do IGFS
+      if (filename === 'console.js' && (!window.IGFS || !window.IGFS.Console || !window.IGFS.Console.log)) {
+        throw new Error('Console module loaded but IGFS.Console not properly exported');
+      }
       if (filename === 'ui.js' && (!window.IGFS || !window.IGFS.UI)) {
         throw new Error('UI module loaded but IGFS.UI not exported');
       }
@@ -75,6 +101,7 @@
 
   // ---------- Pořadí modulů ----------
   const MODULES = [
+    'console.js',  // musí být první pro IGFS.Console
     'utils.js',
     'icons.js',    // musí být před ui.js (definuje ti())
     'ui.js',       // používá ti() z icons.js
