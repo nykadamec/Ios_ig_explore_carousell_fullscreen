@@ -4,7 +4,7 @@
   const IGFS = (window.IGFS = window.IGFS || {});
   const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce } = IGFS;
   const { UI } = IGFS;
-  const { collectExploreItems } = IGFS;
+  const { collectExploreItems, collectExploreItemsAsync } = IGFS; // Přidáno async verzi
   const { setPreferHQ, getPreferHQ } = IGFS.Qual;
   const { resolveHQ, preloadHQIntoCache, loadForIndexIOS } = IGFS.Preload;
   const { loadMoreImagesHoldBottom, mergeKeepState } = IGFS.Infinite;
@@ -89,16 +89,47 @@
   const next = ()=> { if (state.cur < state.items.length-1) translateToDebounced(state.cur+1); };
   const prev = ()=> { if (state.cur > 0) translateToDebounced(state.cur-1); };
 
-  function open(){
+  // Asynchronní otevření s čekáním na kompletní načtení obrázků
+  async function open(){
     if (state.active) return;
-    state.items = collectExploreItems();
-    if (!state.items.length){ toast('No images found on Explore'); return; }
+    
+    // Zobraz loading indikátor
+    UI.showLoading();
+    toast('Načítám obrázky...');
+    
+    try {
+      // Použij async verzi pro kompletní načtení HQ dat
+      state.items = await collectExploreItemsAsync(3000); // 3s timeout
+      if (!state.items.length){ 
+        toast('No images found on Explore'); 
+        UI.hideLoading();
+        return; 
+      }
 
-    UI.setVersion(IGFS.VERSION);
-    state.cur = 0;
-    buildSlides();
-    UI.showOverlay();
-    state.active = true;
+      UI.setVersion(IGFS.VERSION);
+      state.cur = 0;
+      buildSlides();
+      UI.showOverlay();
+      state.active = true;
+      UI.hideLoading();
+      toast(`Načteno ${state.items.length} obrázků v HQ kvalitě`);
+    } catch (error) {
+      console.error('Chyba při načítání obrázků:', error);
+      // Fallback na synchronní verzi
+      toast('Používám rychlé načtení (možná low-res)');
+      state.items = collectExploreItems();
+      if (!state.items.length){ 
+        toast('No images found on Explore'); 
+        UI.hideLoading();
+        return; 
+      }
+      UI.setVersion(IGFS.VERSION);
+      state.cur = 0;
+      buildSlides();
+      UI.showOverlay();
+      state.active = true;
+      UI.hideLoading();
+    }
   }
 
   function close(){
