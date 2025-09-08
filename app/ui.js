@@ -41,24 +41,24 @@
   // Styly
   const css = `
   .igfs-overlay{
-    position:fixed;
-    inset:0;
-    z-index:2147483646;
-    background:#000;
-    color:#fff;
-    display:none;
-    -webkit-tap-highlight-color:transparent;
-    touch-action:none;
-    opacity:0;
-    transform:scale(0.95);
-    transition:opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
-    max-width:100vw;
-    max-height:100vh;
-    overflow:hidden;
-    box-sizing:border-box;
-    padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+    position:fixed !important;
+    inset:0 !important;
+    z-index:2147483647 !important;
+    background:#000 !important;
+    color:#fff !important;
+    display:none !important;
+    -webkit-tap-highlight-color:transparent !important;
+    touch-action:none !important;
+    opacity:0 !important;
+    transform:scale(0.95) !important;
+    transition:opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0, 0.2, 1) !important;
+    max-width:100vw !important;
+    max-height:100vh !important;
+    overflow:hidden !important;
+    box-sizing:border-box !important;
+    padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0) !important;
   }
-  .igfs-overlay.igfs-show{display:block;opacity:1;transform:scale(1)}
+  .igfs-overlay.igfs-show{display:block !important;opacity:1 !important;transform:scale(1) !important}
   .igfs-overlay.igfs-show .igfs-track{animation:slideInUp 0.4s cubic-bezier(0.2, 0, 0.2, 1) 0.1s both}
   body.igfs-overlay-active{overflow:hidden!important;-webkit-overflow-scrolling:touch!important}
   body.igfs-overlay-active>*:not(.igfs-overlay):not(.igfs-fab):not(.igfs-toast-wrap){pointer-events:none!important}
@@ -125,8 +125,8 @@
   .igfs-menu-btn:active{transform:scale(.95)}
   .igfs-menu-btn:disabled{opacity:0.3;cursor:not-allowed;transform:scale(1)}
 
-  .igfs-fab{position:fixed;top:calc(env(safe-area-inset-top,0) + 10px);right:calc(env(safe-area-inset-right,0) + 10px);z-index:2147483647!important;padding:6px 10px;font-size:12px;border-radius:999px;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;gap:6px}
-  .igfs-fab:hover,.igfs-fab:focus{background:rgba(255,255,255,.15);outline:none}
+  .igfs-fab{position:fixed !important;top:calc(env(safe-area-inset-top,0) + 10px) !important;right:calc(env(safe-area-inset-right,0) + 10px) !important;z-index:2147483647 !important;padding:6px 10px !important;font-size:12px !important;border-radius:999px !important;border:none !important;background:rgba(0,0,0,.6) !important;color:#fff !important;cursor:pointer !important;backdrop-filter:blur(6px) !important;-webkit-backdrop-filter:blur(6px) !important;display:flex !important;align-items:center !important;gap:6px !important}
+  .igfs-fab:hover,.igfs-fab:focus{background:rgba(255,255,255,.15) !important;outline:none !important}
   .igfs-version{font-size:9px;opacity:0.7;margin-left:6px}
 
   .igfs-toast-wrap{position:fixed;left:0;right:0;bottom:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 8px calc(env(safe-area-inset-bottom,0) + 6px);pointer-events:none}

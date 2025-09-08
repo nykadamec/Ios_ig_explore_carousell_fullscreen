@@ -32,6 +32,7 @@
     header.innerHTML = `
       <div class="igfs-console-title">Console</div>
       <div class="igfs-console-controls">
+        <button class="igfs-console-btn igfs-console-copy">Copy</button>
         <button class="igfs-console-btn igfs-console-clear">Clear</button>
         <button class="igfs-console-btn igfs-console-close">${IGFS.ti ? IGFS.ti('x', 14) : '×'}</button>
       </div>
@@ -58,6 +59,13 @@
       });
     }
     
+    const copyBtn = header.querySelector('.igfs-console-copy');
+    if (copyBtn) {
+      copyBtn.addEventListener('click', () => {
+        copyConsoleOutput();
+      });
+    }
+    
     return consolePanel;
   }
   
@@ -81,29 +89,29 @@
   function addConsoleStyles() {
     const css = `
     .igfs-console-panel {
-      position: fixed;
-      right: 10px;
-      top: 50px;
-      bottom: 80px;
-      width: 350px;
-      background: rgba(0, 0, 0, 0.92);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 20px 40px rgba(0, 0, 0.6);
-      z-index: 1000;
-      overflow: hidden;
-      transform: translateX(100%);
-      opacity: 0;
-      transition: all 0.3s cubic-bezier(0.2, 0, 0.2, 1);
-      display: flex;
-      flex-direction: column;
+      position: fixed !important;
+      right: 10px !important;
+      top: 50px !important;
+      bottom: 80px !important;
+      width: 350px !important;
+      background: rgba(0, 0, 0, 0.92) !important;
+      backdrop-filter: blur(12px) !important;
+      -webkit-backdrop-filter: blur(12px) !important;
+      border-radius: 12px !important;
+      border: 1px solid rgba(255, 255, 255, 0.1) !important;
+      box-shadow: 0 20px 40px rgba(0, 0, 0.6) !important;
+      z-index: 2147483647 !important;
+      overflow: hidden !important;
+      transform: translateX(100%) !important;
+      opacity: 0 !important;
+      transition: all 0.3s cubic-bezier(0.2, 0, 0.2, 1) !important;
+      display: flex !important;
+      flex-direction: column !important;
     }
-    
+
     .igfs-console-panel.igfs-console-show {
-      transform: translateX(0);
-      opacity: 1;
+      transform: translateX(0) !important;
+      opacity: 1 !important;
     }
     
     .igfs-console-header {
@@ -198,33 +206,33 @@
     }
     
     .igfs-console-toggle {
-      position: fixed;
-      bottom: calc(env(safe-area-inset-bottom, 0) + 20px);
-      right: 20px;
-      z-index: 2147483647;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      background: rgba(0, 0, 0, 0.6);
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      backdrop-filter: blur(6px);
-      -webkit-backdrop-filter: blur(6px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 12px rgba(0, 0, 0.3);
-      transition: all 0.2s ease;
+      position: fixed !important;
+      bottom: calc(env(safe-area-inset-bottom, 0) + 20px) !important;
+      right: 20px !important;
+      z-index: 2147483647 !important;
+      width: 40px !important;
+      height: 40px !important;
+      border-radius: 50% !important;
+      background: rgba(0, 0, 0, 0.6) !important;
+      color: #fff !important;
+      border: none !important;
+      cursor: pointer !important;
+      backdrop-filter: blur(6px) !important;
+      -webkit-backdrop-filter: blur(6px) !important;
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      box-shadow: 0 4px 12px rgba(0, 0, 0.3) !important;
+      transition: all 0.2s ease !important;
     }
-    
+
     .igfs-console-toggle:hover {
-      background: rgba(255, 255, 255, 0.15);
-      transform: scale(1.1);
+      background: rgba(255, 255, 255, 0.15) !important;
+      transform: scale(1.1) !important;
     }
-    
+
     .igfs-console-toggle:active {
-      transform: scale(0.95);
+      transform: scale(0.95) !important;
     }
     `;
     
@@ -267,6 +275,56 @@
   function clearConsole() {
     consoleState.logs = [];
     updateConsoleContent();
+  }
+  
+  // Copy console output
+  function copyConsoleOutput() {
+    // Přidej systémové informace
+    const systemInfo = [
+      `=== IGFS Console Logs (${new Date().toISOString()}) ===`,
+      `Version: ${window.IGFS ? window.IGFS.VERSION : 'Unknown'}`,
+      `User Agent: ${navigator.userAgent}`,
+      `Screen: ${screen.width}x${screen.height}`,
+      `Viewport: ${window.innerWidth}x${window.innerHeight}`,
+      `URL: ${window.location.href}`,
+      `Total Logs: ${consoleState.logs.length}`,
+      `=== LOGS ===`
+    ].join('\n');
+
+    const output = systemInfo + '\n' + consoleState.logs
+      .map(log => `[${log.timestamp}] [${log.level.toUpperCase()}] ${log.message}`)
+      .join('\n');
+
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(output).then(() => {
+        addLogEntry('info', '📋 Console output copied to clipboard');
+      }).catch(() => {
+        fallbackCopyText(output);
+      });
+    } else {
+      fallbackCopyText(output);
+    }
+  }
+  
+  // Fallback copy method
+  function fallbackCopyText(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+      document.execCommand('copy');
+      addLogEntry('info', '📋 Console output copied to clipboard (fallback)');
+    } catch (err) {
+      addLogEntry('error', '❌ Failed to copy console output');
+    }
+    
+    document.body.removeChild(textArea);
   }
   
   // Add log entry
@@ -328,31 +386,85 @@
     const originalError = console.error;
     const originalInfo = console.info;
     const originalDebug = console.debug;
+    const originalTable = console.table;
+    const originalGroup = console.group;
+    const originalGroupEnd = console.groupEnd;
+    const originalTime = console.time;
+    const originalTimeEnd = console.timeEnd;
     
-    // Override console methods
+    // Helper to format console arguments properly
+    function formatConsoleArgs(args) {
+      return args.map(arg => {
+        if (typeof arg === 'object') {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      }).join(' ');
+    }
+    
+    // Override console methods to capture real devtools output
     console.log = function(...args) {
-      addLogEntry('log', args.join(' '));
+      const formatted = formatConsoleArgs(args);
+      addLogEntry('log', formatted);
       originalLog.apply(console, args);
     };
     
     console.warn = function(...args) {
-      addLogEntry('warn', args.join(' '));
+      const formatted = formatConsoleArgs(args);
+      addLogEntry('warn', formatted);
       originalWarn.apply(console, args);
     };
     
     console.error = function(...args) {
-      addLogEntry('error', args.join(' '));
+      const formatted = formatConsoleArgs(args);
+      addLogEntry('error', formatted);
       originalError.apply(console, args);
     };
     
     console.info = function(...args) {
-      addLogEntry('info', args.join(' '));
+      const formatted = formatConsoleArgs(args);
+      addLogEntry('info', formatted);
       originalInfo.apply(console, args);
     };
     
     console.debug = function(...args) {
-      addLogEntry('debug', args.join(' '));
+      const formatted = formatConsoleArgs(args);
+      addLogEntry('debug', formatted);
       originalDebug.apply(console, args);
+    };
+    
+    // Capture console.table
+    console.table = function(...args) {
+      const formatted = `[TABLE] ${formatConsoleArgs(args)}`;
+      addLogEntry('log', formatted);
+      if (originalTable) originalTable.apply(console, args);
+    };
+    
+    // Capture console.group
+    console.group = function(...args) {
+      const formatted = `[GROUP] ${formatConsoleArgs(args)}`;
+      addLogEntry('log', formatted);
+      if (originalGroup) originalGroup.apply(console, args);
+    };
+    
+    console.groupEnd = function() {
+      addLogEntry('log', '[GROUP END]');
+      if (originalGroupEnd) originalGroupEnd.apply(console);
+    };
+    
+    // Capture console.time/timeEnd
+    console.time = function(label) {
+      addLogEntry('debug', `[TIMER START] ${label || 'default'}`);
+      if (originalTime) originalTime.apply(console, arguments);
+    };
+    
+    console.timeEnd = function(label) {
+      addLogEntry('debug', `[TIMER END] ${label || 'default'}`);
+      if (originalTimeEnd) originalTimeEnd.apply(console, arguments);
     };
     
     // Capture unhandled errors
@@ -508,12 +620,15 @@
     hide: hideConsole,
     toggle: toggleConsole,
     clear: clearConsole,
+    copy: copyConsoleOutput,
     log: (message) => addLogEntry('log', message),
     warn: (message) => addLogEntry('warn', message),
     error: (message) => addLogEntry('error', message),
     info: (message) => addLogEntry('info', message),
     debug: (message) => addLogEntry('debug', message),
-    getLogs: () => [...consoleState.logs] // Copy logs array for external access
+    getLogs: () => [...consoleState.logs], // Copy logs array for external access
+    checkHealth: checkIGFSModuleHealth,
+    getState: () => ({ ...consoleState })
   };
   
   // Auto-initialize if document is already loaded

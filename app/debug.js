@@ -140,8 +140,8 @@
 
   function addDebugStyles() {
     const debugCss = `
-    .igfs-debug-panel{position:fixed;right:8px;top:60px;bottom:90px;width:min(380px, calc(100vw - 16px));background:rgba(0,0,0,.95);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-radius:16px;border:1px solid rgba(255,255,255,.15);box-shadow:0 25px 50px rgba(0,0,0,.8);z-index:10000;overflow:hidden;transform:translateX(100%);opacity:0;transition:all 0.4s cubic-bezier(0.2, 0, 0.2, 1);touch-action:manipulation}
-    .igfs-debug-panel.igfs-debug-show{transform:translateX(0);opacity:1}
+    .igfs-debug-panel{position:fixed !important;right:8px !important;top:60px !important;bottom:90px !important;width:min(380px, calc(100vw - 16px)) !important;background:rgba(0,0,0,.95) !important;backdrop-filter:blur(16px) !important;-webkit-backdrop-filter:blur(16px) !important;border-radius:16px !important;border:1px solid rgba(255,255,255,.15) !important;box-shadow:0 25px 50px rgba(0,0,0,.8) !important;z-index:2147483647 !important;overflow:hidden !important;transform:translateX(100%) !important;opacity:0 !important;transition:all 0.4s cubic-bezier(0.2, 0, 0.2, 1) !important;touch-action:manipulation !important}
+    .igfs-debug-panel.igfs-debug-show{transform:translateX(0) !important;opacity:1 !important}
     
     .igfs-debug-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;background:rgba(255,255,255,.08);border-bottom:1px solid rgba(255,255,255,.12)}
     .igfs-debug-title{font:600 15px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;display:flex;align-items:center;gap:8px}
