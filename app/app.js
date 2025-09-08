@@ -282,73 +282,64 @@
   }
 
   function translateTo(i, animate=true){
-    console.log('[IGFS] translateTo called:', {
-      targetIndex: i,
-      currentIndex: state.cur,
-      totalItems: state.items.length,
-      animate: animate,
-      viewportWidth: document.documentElement.clientWidth
-    });
-    state.cur = clamp(i, 0, state.items.length-1);
     const { track } = UI;
-    track.style.transition = animate ? 'transform 280ms ease' : 'none';
-    // Use clientWidth instead of innerWidth for more consistent calculations
-    const viewportWidth = document.documentElement.clientWidth;
-    const transformValue = `translate3d(${-state.cur*viewportWidth}px,0,0)`;
-    console.log('[IGFS] Setting transform:', transformValue);
-    track.style.transform = transformValue;
+    if(state.items.length===0) return;
+    state.cur = i;
+
+    const viewportWidth = () => document.documentElement.clientWidth;
+    const slideWidth = viewportWidth();
+    const newTransform = `translate3d(${-i * slideWidth}px, 0, 0)`;
+
+    track.style.transition = animate ? 'transform .35s cubic-bezier(.4,0,.2,1)' : 'none';
+    track.style.transform = newTransform;
+
     updateIndex();
 
-    // Optimalizovaný preload systém pro iOS
-    const optimizedPreload = async () => {
-      // 1. Prioritní preload: aktuální a sousední obrázky
-      const priorityIndexes = [state.cur-1, state.cur, state.cur+1];
-      const priorityPromises = priorityIndexes
-        .filter(k => k >= 0 && k < state.items.length)
-        .map(k => loadForIndexIOS(state.items, k));
-      
-      await Promise.all(priorityPromises);
-      
-      // 2. Background preload: další obrázky dopředu
+    // optimized preload for ios.
+    // 1. load current and neighbours with high prio
+    // 2. load next 5 with low prio
+    // 3. if we are at the end, trigger load more
+    setTimeout(async ()=>{
+      const prio = [state.cur-1, state.cur, state.cur+1];
+      const prioPromises = [];
+      for(const k of prio){
+        if(k < 0 || k >= state.items.length) continue;
+        prioPromises.push(loadForIndexIOS(state.items, k));
+      }
+      await Promise.all(prioPromises);
+
       await bgPreloader.preloadAhead(state.items, state.cur);
-      
-      // 3. Kontrola, zda spustit načítání nových obrázků
-      if (bgPreloader.shouldTriggerPreload(state.cur, state.items.length)) {
-        bgPreloader.triggerBackgroundPreload(state).then((added) => {
-          if (added) {
-            // Přidat nové slidy do track
+
+      if(bgPreloader.shouldTriggerPreload(state.cur, state.items.length)){
+        bgPreloader.triggerBackgroundPreload(state).then((added)=>{
+          if(added){
+            // add new slides to track
             const keep = state.cur;
             const trackWas = track.children.length;
-            for (let i = trackWas; i < state.items.length; i++){
+            for(let i=trackWas; i<state.items.length; i++){
               const s = makeSlide(state.items[i], i);
               track.appendChild(s);
             }
-            
-            // Zajistit správnou pozici overlay a track
-            setTimeout(() => {
-              // Obnovit pozici bez animace
+            // after images are loaded, the track height is not updated
+            // which causes the new slides to be not visible
+            // we need to re-set the track position after a while
+            setTimeout(()=>{
+              // no anim
               track.style.transition = 'none';
-              track.style.transform = `translate3d(${-keep*viewportWidth}px,0,0)`;
+              track.style.transform = `translate3d(${-keep*viewportWidth()}px,0,0)`;
               state.cur = keep;
-              
-              // Aktualizovat UI
               updateIndex();
-              
-              // Obnovit animace po krátké pauze
-              setTimeout(() => {
+              setTimeout(()=>{
                 track.style.transition = '';
               }, 50);
             }, 100);
           }
-        }).catch(error => {
-          console.error('Background preload failed:', error);
-          toast('Background loading failed');
+        }).catch(err=>{
+          console.error('bg preload failed', err);
+          toast('background loading failed');
         });
       }
-    };
-    
-    // Spustit optimalizovaný preload s menším zpožděním
-    setTimeout(optimizedPreload, 30); // Sníženo z 80ms na 30ms
+    }, 80);
   }
   const translateToDebounced = debounce(translateTo, 20);
   const next = ()=> { if (state.cur < state.items.length-1) translateToDebounced(state.cur+1); };
@@ -639,12 +630,6 @@
 
   // ---------- Interakce ----------
   function onPointerDown(e){
-    if (!state.active) return;
-    if (isUI(e.target) || isForm(e.target)) return;
-    state.dragging = true;
-    state.startX = e.touches ? e.touches[0].clientX : e.clientX;
-    state.curX = state.startX;
-  function onPointerDown(e){
     console.log('[IGFS] onPointerDown:', {
       active: state.active,
       dragging: state.dragging,
@@ -656,9 +641,6 @@
     state.dragging = true;
     state.startX = e.touches ? e.touches[0].clientX : e.clientX;
     state.curX = state.startX;
-    UI.track.style.transition = 'none';
-    e.preventDefault();
-  }
     UI.track.style.transition = 'none';
     e.preventDefault();
   }
