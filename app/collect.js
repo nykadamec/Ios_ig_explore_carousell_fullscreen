@@ -24,13 +24,12 @@
         const elements = Array.from(document.querySelectorAll(selector));
         roots.push(...elements);
       } catch (e) {
-        console.warn(`Selector failed: ${selector}`, e);
+        // Ignorovat chyby v selectorech
       }
     });
     
     // Deduplikace na základě href
     const uniqueRoots = Array.from(new Set(roots));
-    console.log(`[IGFS] Found ${uniqueRoots.length} potential items from ${roots.length} total elements`);
     
     const uniq = new Map();
     for (const a of uniqueRoots){
@@ -102,21 +101,14 @@
             hq_preload_promise:null
           });
         } else {
-          console.warn(`No valid src found for image in link: ${href}`, {
-            imgSrc: imgSrc,
-            imgCurrentSrc: img.currentSrc,
-            imgDataSrc: img.getAttribute('data-src'),
-            imgSrcset: img.srcset,
-            img: img
-          });
+          // Pokračovat bez logování - obrázek nemá platný src
         }
       } else {
-        console.warn(`No img element found in link: ${href}`, a);
+        // Vynechat chybové položky bez obrázku
       }
     }
     
     const items = Array.from(uniq.values());
-    console.log(`[IGFS] Collected ${items.length} valid items`);
     
     // Seřadit podle pozice v gridu
     items.sort((A,B)=>{
@@ -133,9 +125,7 @@
   // Asynchronní verze s čekáním na srcset pomocí MutationObserver - vylepšená
   async function collectExploreItemsAsync(timeout = 5000) {
     return new Promise((resolve, reject) => {
-      console.log(`[IGFS] Starting async collect with ${timeout}ms timeout`);
       let items = collectExploreItems();
-      console.log(`[IGFS] Initial sync collect found ${items.length} items`);
       
       const completed = new Set();
       const observers = [];

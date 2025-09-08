@@ -31,28 +31,8 @@
   menu.append(prevBtn, btnSave, btnDl, preloadBtn, btnCopy, btnOpen, btnQual, nextBtn);
   
   overlay.append(track, idxLab, closeBtn, loadingIndicator, menu);
-  document.body.appendChild(overlay);
 
-   // Debug: Check floating bar positioning
-   console.log('[IGFS] Creating toggle button:', {
-     position: 'fixed',
-     top: 'calc(env(safe-area-inset-top,0) + 10px)',
-     right: 'calc(env(safe-area-inset-right,0) + 10px)',
-     zIndex: '2147483647',
-     display: 'flex',
-     visibility: 'visible',
-     safeAreaInsets: {
-       top: 'env(safe-area-inset-top,0)',
-       right: 'env(safe-area-inset-right,0)',
-       bottom: 'env(safe-area-inset-bottom,0)',
-       left: 'env(safe-area-inset-left,0)'
-     },
-     viewport: {
-       width: window.innerWidth,
-       height: window.innerHeight,
-       devicePixelRatio: window.devicePixelRatio
-     }
-   });
+   // Vytvoření toggle buttonu pro fullscreen mód
   const toggleBtn = document.createElement('button');
   toggleBtn.className='igfs-fab';
   toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
@@ -60,15 +40,67 @@
 
   // Styly
   const css = `
-  .igfs-overlay{position:fixed;inset:0;z-index:2147483646;background:#000;color:#fff;display:none;-webkit-tap-highlight-color:transparent;touch-action:none;opacity:0;transform:scale(0.95);transition:opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0, 0.2, 1)}
+  .igfs-overlay{
+    position:fixed;
+    inset:0;
+    z-index:2147483646;
+    background:#000;
+    color:#fff;
+    display:none;
+    -webkit-tap-highlight-color:transparent;
+    touch-action:none;
+    opacity:0;
+    transform:scale(0.95);
+    transition:opacity 0.3s cubic-bezier(0.2, 0, 0.2, 1), transform 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+    max-width:100vw;
+    max-height:100vh;
+    overflow:hidden;
+    box-sizing:border-box;
+    padding:env(safe-area-inset-top,0) env(safe-area-inset-right,0) env(safe-area-inset-bottom,0) env(safe-area-inset-left,0);
+  }
   .igfs-overlay.igfs-show{display:block;opacity:1;transform:scale(1)}
   .igfs-overlay.igfs-show .igfs-track{animation:slideInUp 0.4s cubic-bezier(0.2, 0, 0.2, 1) 0.1s both}
   body.igfs-overlay-active{overflow:hidden!important;-webkit-overflow-scrolling:touch!important}
   body.igfs-overlay-active>*:not(.igfs-overlay):not(.igfs-fab):not(.igfs-toast-wrap){pointer-events:none!important}
 
-  .igfs-track{position:absolute;inset:0;display:flex;height:100%;width:100%;will-change:transform;transition:transform 280ms ease}
-  .igfs-slide{position:relative;flex:0 0 100%; height:100vh; display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
-  .igfs-slide img{width:100%;height:100vh;object-fit:contain;object-position:center;display:block;opacity:0;transition:opacity 0.4s ease, filter 0.3s ease, transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)}
+  .igfs-track{
+    position:absolute;
+    inset:0;
+    display:flex;
+    height:100%;
+    width:100%;
+    max-width:100vw;
+    max-height:100vh;
+    will-change:transform;
+    transition:transform 280ms ease;
+    overflow:hidden;
+    box-sizing:border-box;
+  }
+  .igfs-slide{
+    position:relative;
+    flex:0 0 100%;
+    height:100vh;
+    max-height:100vh;
+    max-width:100vw;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#000;
+    overflow:hidden;
+    box-sizing:border-box;
+  }
+  .igfs-slide img{
+    width:100vw;
+    max-width:100vw;
+    height:100vh;
+    max-height:100vh;
+    object-fit:contain;
+    object-position:center;
+    display:block;
+    opacity:0;
+    transition:opacity 0.4s ease, filter 0.3s ease, transform 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+    box-sizing:border-box;
+  }
   .igfs-slide img.loaded{opacity:1}
   .igfs-slide img:hover{transform:scale(1.02)}
   .igfs-slide img.igfs-loading{filter:blur(6px) saturate(.8) brightness(.9);opacity:0.7}
@@ -103,7 +135,7 @@
   `;
   const styleTag=document.createElement('style'); styleTag.textContent=css; document.head.appendChild(styleTag);
 
-  document.body.appendChild(overlay);
+  // overlay již přidán výše
 
   IGFS.UI = {
     overlay, track, idxLab, closeBtn,

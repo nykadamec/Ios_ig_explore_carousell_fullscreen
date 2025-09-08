@@ -1,7 +1,9 @@
 // /app/infinite.js
 (function(){
-  'use strict';
-  const IGFS = (window.IGFS = window.IGFS || {});
+  'use strict';        overlay.style.pointerEvents = 'none';
+        overlay.style.zIndex = '1'; // Snížit z-index aby byl pod scrollable obsahem
+        overlay.style.position = 'absolute'; // Zabránit blokování layoutu
+        overlay.style.visibility = 'hidden'; // Úplě skrýt během scrollst IGFS = (window.IGFS = window.IGFS || {});
   const { sleep, toast } = IGFS;
   const { collectExploreItems, collectExploreItemsAsync } = IGFS;
 
@@ -36,8 +38,6 @@
         transform: overlay.style.transform || computedStyle.transform || '',
         visibility: overlay.style.visibility || computedStyle.visibility || ''
       };
-      
-      console.log('[IGFS] Saved original overlay styles:', originalStyles);
       
       // Dočasně umožnit scroll pod overlayem bez skrytí
       if (wasActive) {
@@ -149,7 +149,6 @@
 
       // Obnovit původní styly overlayu
       if (wasActive) {
-        console.log('[IGFS] Restoring overlay styles...');
         
         // Postupné obnovení s lepší kontrolou
         overlay.style.visibility = originalStyles.visibility === 'hidden' ? '' : originalStyles.visibility;
@@ -173,8 +172,6 @@
         
         // Dodatečné zajištění správného zobrazení
         overlay.style.display = '';
-        
-        console.log('[IGFS] Overlay styles restored');
         await sleep(150); // Delší delay pro smooth přechod a stabilizaci
       }
 
@@ -182,13 +179,9 @@
       const beforeLen = state.items.length;
       let fresh;
       try {
-        console.log('[IGFS] Re-scanning DOM for new items...');
         fresh = await collectExploreItemsAsync(8000); // Delší timeout pro nové obrázky po scroll
-        console.log(`[IGFS] Async collect found ${fresh.length} total items`);
       } catch (e) {
-        console.warn('Async collect failed, using sync:', e);
         fresh = collectExploreItems();
-        console.log(`[IGFS] Sync collect found ${fresh.length} total items`);
       }
       
       state.items = mergeKeepState(state.items, fresh);
@@ -222,7 +215,6 @@
       
       // Obnovit styly overlayu v případě chyby
       if (wasActive && overlay) {
-        console.log('[IGFS] Restoring overlay styles after error...');
         try {
           // Robustnější obnova s try-catch
           Object.keys(originalStyles).forEach(key => {
@@ -237,11 +229,8 @@
           overlay.style.display = '';
           overlay.style.opacity = '';
           overlay.style.visibility = '';
-          
-          console.log('[IGFS] Overlay styles restored after error');
         } catch (styleError) {
-          console.error('[IGFS] Error restoring overlay styles:', styleError);
-          // Fallback - básnicke obnovení
+          // Fallback - základní obnovení stylů
           overlay.style.pointerEvents = '';
           overlay.style.zIndex = '';
           overlay.style.position = '';

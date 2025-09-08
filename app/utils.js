@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   
-  const VERSION = '0.1.54-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul
+  const VERSION = '0.1.55-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul
   
   const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
   const debounce = (fn, t)=>{ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),t); }; };
@@ -105,7 +105,6 @@
 
     async triggerBackgroundPreload(state) {
       if (this.isPreloading) {
-        console.log('[IGFS] Background preload already in progress, skipping');
         return false;
       }
       

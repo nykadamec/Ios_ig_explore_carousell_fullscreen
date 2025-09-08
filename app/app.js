@@ -62,7 +62,8 @@
     
     const img = document.createElement('img'); 
     img.decoding='async'; 
-    img.loading='eager'; 
+    img.loading='eager';
+    img.dataset.itemIndex = String(i); // Přidání indexu pro debugování
     slide.appendChild(img);
     
     const spinner = document.createElement('div'); 
@@ -140,10 +141,12 @@
     if (bestUrl) {
       img.src = bestUrl;
       img.setAttribute('data-quality', 'hq');
+      img.setAttribute('data-item-href', it.href); // Přidání href pro identifikaci
       it.hq_preloaded = true;
     } else if (it.low) {
       img.src = it.low;
       img.setAttribute('data-quality', 'lq');
+      img.setAttribute('data-item-href', it.href); // Přidání href pro identifikaci
       // Rychlý async upgrade na HQ
       setTimeout(() => {
         resolveHQ(it).then(hqUrl => {
@@ -175,27 +178,22 @@
       }
     }
     
-        // Rychlý iOS loading jako backup s větší prioritou
+        // Rychlé načítání obrazků pro iOS
     setTimeout(() => {
-      // Pokud obrázek stále nemá src, prioritně spustíme iOS loading
-      if (!img.src || img.src === window.location.href) {
-        console.warn(`Image ${i} has no src, triggering priority iOS loading`);
-        loadForIndexIOS(state.items, i).then(() => {
-          // Po iOS loading zkusíme znovu nastavit src
-          if (state.items[i] && state.items[i].low && !img.src) {
-            img.src = state.items[i].low;
-            img.setAttribute('data-quality', 'lq');
-          }
-        }).catch(error => {
-          console.error(`Error loading image for slide ${i}:`, error);
-        });
-      } else {
-        // Standardní iOS loading pro optimalizaci
-        loadForIndexIOS(state.items, i).catch(error => {
-          console.error(`Error optimizing image for slide ${i}:`, error);
-        });
-      }
-    }, 20); // Sníženo z 100ms na 20ms pro rychlejší reakci
+      // Jednotné zpracování iOS loadingu
+      loadForIndexIOS(state.items, i).then(() => {
+        // Nastavení src po úspěšném načtení, pokud ještě nebyl nastaven
+        if ((!img.src || img.src === window.location.href) && state.items[i] && state.items[i].low) {
+          img.src = state.items[i].low;
+          img.setAttribute('data-quality', 'lq');
+        }
+      }).catch(error => {
+        // Tiché zpracování chyby bez console.error 
+        if (!img.src && state.items[i] && state.items[i].low) {
+          img.src = state.items[i].low; // Fallback na low i v případě chyby
+        }
+      });
+    }, 20);
     
     // Dvaklik → otevřít post
     slide.addEventListener('dblclick', ()=>{ 
@@ -207,6 +205,32 @@
 
   function buildSlides(){
     const { track } = UI;
+    
+    // Kontrola unikátnosti položek před vykreslením
+    const uniqueHrefs = new Set();
+    const uniqueSrcs = new Set();
+    const duplicates = [];
+    
+    state.items.forEach((item, index) => {
+      if (uniqueHrefs.has(item.href)) {
+        duplicates.push({ index, reason: 'duplicate href', href: item.href });
+      } else {
+        uniqueHrefs.add(item.href);
+      }
+      
+      const src = item.hq || item.low;
+      if (src && uniqueSrcs.has(src)) {
+        duplicates.push({ index, reason: 'duplicate src', src });
+      } else if (src) {
+        uniqueSrcs.add(src);
+      }
+    });
+    
+    // Informovat o duplicitách
+    if (duplicates.length > 0) {
+      console.warn('[IGFS] Duplicates found in carousel items:', duplicates);
+    }
+    
     track.innerHTML = '';
     state.items.forEach((it,i)=> track.appendChild(makeSlide(it,i)));
     updateIndex();
@@ -630,12 +654,7 @@
 
   // ---------- Interakce ----------
   function onPointerDown(e){
-    console.log('[IGFS] onPointerDown:', {
-      active: state.active,
-      dragging: state.dragging,
-      target: e.target.tagName,
-      clientX: e.touches ? e.touches[0].clientX : e.clientX
-    });
+    // Zpracování pointer down eventu
     if (!state.active) return;
     if (isUI(e.target) || isForm(e.target)) return;
     state.dragging = true;
