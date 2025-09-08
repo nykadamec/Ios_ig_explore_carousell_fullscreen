@@ -78,7 +78,7 @@
 
     // Initialize all systems in correct order
     async init() {
-      console.log(`[IGFS Bridge] Initializing IGFS v${VERSION}...`);
+      IGFS.Console.log(`[IGFS Bridge] Initializing IGFS v${VERSION}...`);
 
       try {
         // Initialize debug system first (depends on UI)
@@ -96,10 +96,10 @@
           App.init();
         }
 
-        console.log(`[IGFS Bridge] Initialization complete`);
+        IGFS.Console.log(`[IGFS Bridge] Initialization complete`);
         return true;
       } catch (error) {
-        console.error('[IGFS Bridge] Initialization failed:', error);
+        IGFS.Console.error('[IGFS Bridge] Initialization failed:', error);
         return false;
       }
     },

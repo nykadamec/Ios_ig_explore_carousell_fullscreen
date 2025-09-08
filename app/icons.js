@@ -25,4 +25,9 @@
   }
 
   IGFS.ti = ti;
+
+  // Debug log pro kontrolu načtení ikon
+  if (window.IGFS && window.IGFS.Console) {
+    window.IGFS.Console.log('[IGFS Icons] Icons module loaded, ti function available');
+  }
 })();

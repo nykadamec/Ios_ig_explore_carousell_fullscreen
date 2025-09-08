@@ -315,7 +315,7 @@
           }
         } catch (error) {
           IGFS.Debug.debugLog(`❌ Copy failed: ${error.message}`, 'error');
-          console.error('Copy logs error:', error);
+          IGFS.Console.error('Copy logs error:', error);
         }
       });
     }
@@ -522,7 +522,7 @@
         this.updateDebugValue('debug-infinite-status', isLoadingMore ? 'Loading...' : 'Ready');
         
       } catch (error) {
-        console.error('Debug update error:', error);
+        IGFS.Console.error('Debug update error:', error);
         this.debugLog(`❌ Update error: ${error.message}`, 'error');
       }
     },

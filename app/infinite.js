@@ -49,7 +49,7 @@
         overlay.style.position = 'absolute'; // Zabránit blokování layoutu
         overlay.style.visibility = 'hidden'; // Úplně skrýt během scroll
         
-        console.log('[IGFS] Overlay temporarily hidden for scrolling');
+        IGFS.Console.log('[IGFS] Overlay temporarily hidden for scrolling');
         await sleep(50); // Krátký delay pro aplikaci stylů
       }
       
@@ -73,7 +73,7 @@
         
         if (nowH > startHeight) { 
           grown = true; 
-          console.log(`[IGFS] Scroll height grew from ${startHeight} to ${nowH}`);
+          IGFS.Console.log(`[IGFS] Scroll height grew from ${startHeight} to ${nowH}`);
           // Pokračuj ještě chvíli po růstu pro ujištění kompletního načtení
           await sleep(1500); 
           break; 
@@ -82,7 +82,7 @@
         // Robustnější kontrola nových položek s vícenásobným ověřením
         const currentItems = collectExploreItems();
         if (currentItems.length > lastItemCount) {
-          console.log(`[IGFS] Items increased: ${lastItemCount} → ${currentItems.length}`);
+          IGFS.Console.log(`[IGFS] Items increased: ${lastItemCount} → ${currentItems.length}`);
           lastItemCount = currentItems.length;
           consecutiveItemChecks = 0; // Reset počítadla
         } else {
@@ -92,14 +92,14 @@
         // Považuj za úspěšné, pokud se našly nové položky a zůstaly stabilní
         if (currentItems.length > initialItemsCount && consecutiveItemChecks >= 5) {
           grown = true;
-          console.log(`[IGFS] Found ${currentItems.length - initialItemsCount} new items (stable for 5 checks)`);
+          IGFS.Console.log(`[IGFS] Found ${currentItems.length - initialItemsCount} new items (stable for 5 checks)`);
           break;
         }
         
         // Kontrola nových img elementů přímo v DOM jako backup
         const allImages = document.querySelectorAll('main a[role="link"] img, main a[href^="/p/"] img');
         if (allImages.length > initialItemsCount + 5) { // Buffer pro jistotu
-          console.log(`[IGFS] DOM img count increased significantly: ${allImages.length}`);
+          IGFS.Console.log(`[IGFS] DOM img count increased significantly: ${allImages.length}`);
           grown = true;
           await sleep(1000); // Krátké čekání na stabilizaci
           break;
@@ -110,7 +110,7 @@
 
       // Delší grace delay pro kompletní načtení nových obrázků a srcset
       // Postupné čekání s kontrolou stability
-      console.log('[IGFS] Waiting for images to stabilize...');
+      IGFS.Console.log('[IGFS] Waiting for images to stabilize...');
       await sleep(800); // Základní čekání
       
       // Ověř stabilitu nových obrázků
@@ -132,7 +132,7 @@
         
         // Považuj za stabilní pokud se počet nemění 3 kontroly za sebou
         if (stabilityChecks >= 3) {
-          console.log(`[IGFS] Images stabilized at ${imgsWithSrc.length} loaded images`);
+          IGFS.Console.log(`[IGFS] Images stabilized at ${imgsWithSrc.length} loaded images`);
           break;
         }
         
@@ -208,7 +208,7 @@
         return false;
       }
     } catch (error) {
-      console.error('Chyba při načítání dalších obrázků:', error);
+      IGFS.Console.error('Chyba při načítání dalších obrázků:', error);
       toast('Chyba při načítání - zkuste ručně scrollovat');
       
       // Obnovit styly overlayu v případě chyby
@@ -250,14 +250,14 @@
           toast('Žádné nové obrázky (fallback)');
         }
       } catch (e) {
-        console.error('Fallback selhal:', e);
+        IGFS.Console.error('Fallback selhal:', e);
         toast('Kritická chyba při načítání');
       }
       return false;
     } finally {
       // Zajistit, že styly overlayu jsou vždy obnoveny
       if (wasActive && overlay) {
-        console.log('[IGFS] Final overlay cleanup...');
+        IGFS.Console.log('[IGFS] Final overlay cleanup...');
         try {
           // Kompletní obnova s error handling
           if (typeof originalStyles === 'object') {
@@ -269,7 +269,7 @@
                   overlay.style[key] = '';
                 }
               } catch (e) {
-                console.warn(`Failed to restore style ${key}:`, e);
+                IGFS.Console.warn(`Failed to restore style ${key}:`, e);
                 overlay.style[key] = '';
               }
             });
@@ -283,20 +283,20 @@
           
           console.log('[IGFS] Final overlay cleanup completed');
         } catch (cleanupError) {
-          console.error('[IGFS] Error in final overlay cleanup:', cleanupError);
+          IGFS.Console.error('[IGFS] Error in final overlay cleanup:', cleanupError);
           // Ultimátní fallback
           try {
             overlay.removeAttribute('style');
-            console.log('[IGFS] Applied ultimate fallback - removed all styles');
+            IGFS.Console.log('[IGFS] Applied ultimate fallback - removed all styles');
           } catch (ultimateError) {
-            console.error('[IGFS] Ultimate fallback failed:', ultimateError);
+            IGFS.Console.error('[IGFS] Ultimate fallback failed:', ultimateError);
           }
         }
       }
       
       UI.hideLoading();
       isLoadingMore = false;
-      console.log('[IGFS] loadMoreImagesHoldBottom completed');
+      IGFS.Console.log('[IGFS] loadMoreImagesHoldBottom completed');
     }
   }
 

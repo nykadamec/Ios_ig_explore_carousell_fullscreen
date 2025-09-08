@@ -155,10 +155,10 @@
           });
           
           if (needsRefresh) {
-            console.log('[IGFS] DOM changes detected, refreshing items');
+            IGFS.Console.log('[IGFS] DOM changes detected, refreshing items');
             const newItems = collectExploreItems();
             if (newItems.length > items.length) {
-              console.log(`[IGFS] Found ${newItems.length - items.length} new items via DOM observation`);
+              IGFS.Console.log(`[IGFS] Found ${newItems.length - items.length} new items via DOM observation`);
               items = newItems;
               // Restart observers for new items
               setupItemObservers();
@@ -225,7 +225,7 @@
             }
             
             if (updated) {
-              console.log(`[IGFS] Updated item ${index}:`, {
+              IGFS.Console.log(`[IGFS] Updated item ${index}:`, {
                 href: item.href,
                 hasNewSrcset: !!newSrcset,
                 hasNewSrc: !!newSrc,
@@ -277,7 +277,7 @@
 
       const checkCompletion = () => {
         const completionRate = completed.size / Math.max(items.length, 1);
-        console.log(`[IGFS] Completion: ${completed.size}/${items.length} (${Math.round(completionRate * 100)}%)`);
+        IGFS.Console.log(`[IGFS] Completion: ${completed.size}/${items.length} (${Math.round(completionRate * 100)}%)`);
         
         if (completed.size >= items.length || completionRate >= 0.9) {
           // Finální sorting
@@ -290,7 +290,7 @@
             return (rA.top - rB.top) || (rA.left - rB.left);
           });
           observerCleanup();
-          console.log(`[IGFS] Async collect completed with ${items.length} items`);
+          IGFS.Console.log(`[IGFS] Async collect completed with ${items.length} items`);
           resolve(items);
         }
       };
@@ -300,7 +300,7 @@
           try {
             obs.disconnect();
           } catch (e) {
-            console.warn('Failed to disconnect observer:', e);
+            IGFS.Console.warn('Failed to disconnect observer:', e);
           }
         });
         observers.length = 0;
@@ -309,7 +309,7 @@
           try {
             globalObserver.disconnect();
           } catch (e) {
-            console.warn('Failed to disconnect global observer:', e);
+            IGFS.Console.warn('Failed to disconnect global observer:', e);
           }
         }
       };
@@ -323,7 +323,7 @@
       setTimeout(() => {
         clearInterval(interval);
         observerCleanup();
-        console.log(`[IGFS] Async collect timeout reached, returning ${items.length} items`);
+        IGFS.Console.log(`[IGFS] Async collect timeout reached, returning ${items.length} items`);
         resolve(items);
       }, timeout);
     });

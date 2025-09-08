@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   
-  const VERSION = '0.1.63-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul + Enhanced Console + IGFS Module Load Monitor
+  const VERSION = '0.1.64-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul + Enhanced Console + IGFS Module Load Monitor
   
   const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
   const debounce = (fn, t)=>{ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),t); }; };
@@ -90,7 +90,7 @@
       const shouldTrigger = remaining <= this.preloadThreshold && currentIndex !== this.lastPreloadIndex;
       
       if (shouldTrigger) {
-        console.log('[IGFS] Should trigger preload:', {
+        IGFS.Console.log('[IGFS] Should trigger preload:', {
           currentIndex,
           totalItems,
           remaining,
@@ -111,7 +111,7 @@
       this.isPreloading = true;
       this.lastPreloadIndex = state.cur;
       
-      console.log('[IGFS] Starting background preload...', {
+      IGFS.Console.log('[IGFS] Starting background preload...', {
         currentIndex: state.cur,
         totalItems: state.items.length,
         threshold: this.preloadThreshold
@@ -128,14 +128,14 @@
           IGFS.UI.updateLoadingText('🔄 Loading more images...');
         }
         
-        console.log('[IGFS] Triggering loadMoreImagesHoldBottom...');
+        IGFS.Console.log('[IGFS] Triggering loadMoreImagesHoldBottom...');
         // Použij loadMoreImagesHoldBottom pro načtení nových obrázků
         const added = await IGFS.Infinite.loadMoreImagesHoldBottom(state, 3000);
-        console.log('[IGFS] loadMoreImagesHoldBottom result:', added);
+        IGFS.Console.log('[IGFS] loadMoreImagesHoldBottom result:', added);
         
         if (added) {
           const newCount = state.items.length - this.lastPreloadIndex;
-          console.log(`[IGFS] Successfully loaded ${newCount} new images`);
+          IGFS.Console.log(`[IGFS] Successfully loaded ${newCount} new images`);
           IGFS.toast(`✓ Loaded ${newCount} new images`);
           
           if (IGFS.Debug && IGFS.Debug.debugLog) {
@@ -145,7 +145,7 @@
           // Zajistit správné obnovení overlay pozice
           if (state.active && IGFS.UI && IGFS.UI.overlay) {
             const overlay = IGFS.UI.overlay;
-            console.log('[IGFS] Ensuring overlay is properly restored...');
+            IGFS.Console.log('[IGFS] Ensuring overlay is properly restored...');
             // Resetovat overlay styly pro správné zobrazení
             overlay.style.pointerEvents = '';
             overlay.style.zIndex = '';
@@ -154,12 +154,12 @@
             overlay.style.opacity = '';
             // Krátký delay pro stabilizaci
             await new Promise(resolve => setTimeout(resolve, 100));
-            console.log('[IGFS] Overlay restoration completed');
+            IGFS.Console.log('[IGFS] Overlay restoration completed');
           }
           
           return true;
         } else {
-          console.log('[IGFS] No new images found during background preload');
+          IGFS.Console.log('[IGFS] No new images found during background preload');
           IGFS.toast('No new images found');
           
           if (IGFS.Debug && IGFS.Debug.debugLog) {
@@ -169,7 +169,7 @@
           return false;
         }
       } catch (error) {
-        console.error('[IGFS] Background preload failed:', error);
+        IGFS.Console.error('[IGFS] Background preload failed:', error);
         IGFS.toast('Background loading failed');
         
         if (IGFS.Debug && IGFS.Debug.debugLog) {
@@ -179,7 +179,7 @@
         return false;
       } finally {
         this.isPreloading = false;
-        console.log('[IGFS] Background preload completed, cleaning up...');
+        IGFS.Console.log('[IGFS] Background preload completed, cleaning up...');
         // Skrýt loading indikátor
         if (IGFS.UI) {
           IGFS.UI.hideLoading();
@@ -205,9 +205,9 @@
       if (promises.length > 0) {
         try {
           await Promise.all(promises);
-          console.log(`Preloaded ${promises.length} images ahead of current position`);
+          IGFS.Console.log(`Preloaded ${promises.length} images ahead of current position`);
         } catch (error) {
-          console.warn('Some preload operations failed:', error);
+          IGFS.Console.warn('Some preload operations failed:', error);
         }
       }
     }

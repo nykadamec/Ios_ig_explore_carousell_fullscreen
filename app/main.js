@@ -64,38 +64,47 @@
 
   (async function boot() {
     try {
-      console.log('[IGFS] Starting module loading...');
+      IGFS.Console.log('[IGFS] Starting module loading...');
+
+      if (window.IGFS && window.IGFS.Debug && window.IGFS.Debug.debugLog) {
+        window.IGFS.Debug.debugLog('🚀 Starting IGFS module loading');
+      }
+
       for (const m of MODULES) {
-        console.log(`[IGFS] Loading module: ${m}`);
+        IGFS.Console.log(`[IGFS] Loading module: ${m}`);
         try {
           await loadModule(m);
-          console.log(`[IGFS] Successfully loaded module: ${m}`);
+          IGFS.Console.log(`[IGFS] Successfully loaded module: ${m}`);
         } catch (moduleError) {
-          console.error(`[IGFS] Failed to load module ${m}:`, moduleError);
+          IGFS.Console.error(`[IGFS] Failed to load module ${m}:`, moduleError);
           throw new Error(`Module load failed: ${m}`);
         }
       }
 
-      console.log('[IGFS] All modules loaded, checking IGFS object...');
+      IGFS.Console.log('[IGFS] All modules loaded, checking IGFS object...');
       if (!window.IGFS) {
         throw new Error('IGFS object not created');
       }
-      
-      console.log('[IGFS] IGFS object exists, checking App module...');
+
+      IGFS.Console.log('[IGFS] IGFS object exists, checking App module...');
       if (!window.IGFS.App) {
         throw new Error('App module not loaded');
       }
-      
-      console.log('[IGFS] App module exists, checking init function...');
+
+      IGFS.Console.log('[IGFS] App module exists, checking init function...');
       if (!window.IGFS.App.init) {
         throw new Error('App.init function not found');
       }
-      
-      console.log('[IGFS] Initializing App...');
+
+      IGFS.Console.log('[IGFS] Initializing App...');
       window.IGFS.App.init();
-      console.log('[IGFS] App initialized successfully');
+      IGFS.Console.log('[IGFS] App initialized successfully');
+
+      if (window.IGFS && window.IGFS.Debug && window.IGFS.Debug.debugLog) {
+        window.IGFS.Debug.debugLog('✅ IGFS fully initialized and ready', 'success');
+      }
     } catch (e) {
-      console.error('[IGFS] Boot failed:', e);
+      IGFS.Console.error('[IGFS] Boot failed:', e);
       alert('IGFS failed to load modules. See console for details.');
     }
   })();

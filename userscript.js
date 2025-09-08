@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IG Explore → Fullscreen Swipe (Loader)
 // @namespace    ig-explore-fullscreen
-// @version      0.19.6
+// @version      0.19.7
 // @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.18.0: Aktualizace verze a data poslední aktualizace - 2025-09-08. Oprava kritických chyb (nedefinované proměnné, syntax chyby), implementace bridge.js pro centralizované propojení modulů, standardizace kódovacího stylu, odstranění debug console.log statements. Vylepšená stabilita a výkon.
 // @author       nykadamec
 // @match        https://www.instagram.com/*explore*
@@ -227,9 +227,9 @@
       const consoleSrc = base + 'console.js';
       const consoleCode = await fetchText(consoleSrc);
       evalWithSourceURL(consoleCode, consoleSrc);
-      console.info('[IGFS Loader] Console module loaded');
+      IGFS.Console.info('[IGFS Loader] Console module loaded');
     } catch (e) {
-      console.warn('[IGFS Loader] Failed to load console module:', e?.message || e);
+      IGFS.Console.warn('[IGFS Loader] Failed to load console module:', e?.message || e);
       // Vytvořím základní konzoli pro zachycení chyb, pokud selže načtení console.js
       window.IGFS = window.IGFS || {};
       window.IGFS.Console = {
@@ -246,16 +246,16 @@
       const code = await fetchText(src);
       saveCache(code);
       evalWithSourceURL(code, src);
-      console.info('[IGFS Loader] Loaded app from BASE:', base);
+      IGFS.Console.info('[IGFS Loader] Loaded app from BASE:', base);
     } catch (e) {
-      console.warn('[IGFS Loader] Fetch failed:', e?.message || e);
+      IGFS.Console.warn('[IGFS Loader] Fetch failed:', e?.message || e);
       const cached = loadCache();
       if (cached?.code) {
-        console.info('[IGFS Loader] Using cached app bundle from', new Date(cached.ts).toISOString(), 'BASE:', cached.base);
+        IGFS.Console.info('[IGFS Loader] Using cached app bundle from', new Date(cached.ts).toISOString(), 'BASE:', cached.base);
         if (cached.base) window.__IGFS_BASE_RAW__ = cached.base;
         evalWithSourceURL(cached.code, 'cache:/app/main.js');
       } else {
-        console.error('[IGFS Loader] No cache available. App not started.');
+        IGFS.Console.error('[IGFS Loader] No cache available. App not started.');
         // Použijeme vlastní alert, pokud selže načtení
         if (window.IGFS && window.IGFS.Console) {
           window.IGFS.Console.error('IGFS failed to load modules. See console for details.');

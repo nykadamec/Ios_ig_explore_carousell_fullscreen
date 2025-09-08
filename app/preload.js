@@ -90,7 +90,7 @@
           img.onload = () => resolve(img.src);
           img.onerror = (error) => {
             const errorType = error.type || 'unknown';
-            console.warn(`Attempt ${attempt} failed for ${url} (type: ${errorType}):`, error);
+            IGFS.Console.warn(`Attempt ${attempt} failed for ${url} (type: ${errorType}):`, error);
             
             // Pokud je chyba typu "aborted", zkuste okamžitě znovu bez čekání
             if (errorType === 'abort') {
@@ -162,7 +162,7 @@
           }
           resolve(loadedUrl);
         } else {
-          console.warn('HQ preload failed, falling back to low-res:', item.href);
+          IGFS.Console.warn('HQ preload failed, falling back to low-res:', item.href);
           if (IGFS.Debug && IGFS.Debug.debugLog) {
             IGFS.Debug.debugLog(`⚠️ HQ preload failed, using low-res fallback`, 'warning');
           }
@@ -172,7 +172,7 @@
           resolve(item.low || hqUrl);
         }
       } catch (error) {
-        console.error('Error in preloadHQIntoCache:', error);
+        IGFS.Console.error('Error in preloadHQIntoCache:', error);
         item.hq_preload_promise = null;
         item.hq_preloaded = true;
         resolve(null);
@@ -213,7 +213,7 @@
         throw new Error('Failed to load after retries');
       }
     } catch (error) {
-      console.warn(`Failed to load image: ${url}`, error);
+      IGFS.Console.warn(`Failed to load image: ${url}`, error);
       img.classList.remove('igfs-loading');
       if (spinner) spinner.style.display='none';
       return false;
@@ -226,16 +226,16 @@
   async function loadForIndexIOS(items, i){
     const item = items[i];
     if (!item) {
-      console.warn(`loadForIndexIOS: item ${i} not found`);
+      IGFS.Console.warn(`loadForIndexIOS: item ${i} not found`);
       return;
     }
 
     if (!item.node) {
-      console.warn(`loadForIndexIOS: item ${i} has no node, waiting...`);
+      IGFS.Console.warn(`loadForIndexIOS: item ${i} has no node, waiting...`);
       // Počkat krátce a zkusit znovu
       await new Promise(resolve => setTimeout(resolve, 100));
       if (!item.node) {
-        console.warn(`loadForIndexIOS: item ${i} still has no node after wait`);
+        IGFS.Console.warn(`loadForIndexIOS: item ${i} still has no node after wait`);
         return;
       }
     }
@@ -244,7 +244,7 @@
     const spinner = item.node.querySelector('.igfs-spinner');
 
     if (!img) {
-      console.warn(`loadForIndexIOS: item ${i} has no img element`);
+      IGFS.Console.warn(`loadForIndexIOS: item ${i} has no img element`);
       return;
     }
 

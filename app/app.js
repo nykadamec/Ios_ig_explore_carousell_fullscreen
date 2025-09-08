@@ -5,6 +5,11 @@
   const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce, BackgroundPreloader, pickLargestFromSrcset, deThumbURL, decodeEntities } = IGFS;
   const { UI } = IGFS;
   const { collectExploreItems, collectExploreItemsAsync } = IGFS;
+
+  // Debug log pro kontrolu importů
+  if (window.IGFS && window.IGFS.Console) {
+    window.IGFS.Console.log('[IGFS App] App module starting, UI available:', !!UI);
+  }
   const { setPreferHQ, getPreferHQ } = IGFS.Qual;
   const { resolveHQ, preloadHQIntoCache, loadForIndexIOS } = IGFS.Preload;
   const { loadMoreImagesHoldBottom, mergeKeepState } = IGFS.Infinite;
@@ -92,19 +97,19 @@
     
     // Enhanced error handler
     img.addEventListener('error', () => {
-      console.warn(`Failed to load image for item ${i}:`, it.href, 'Current src:', img.src);
+      IGFS.Console.warn(`Failed to load image for item ${i}:`, it.href, 'Current src:', img.src);
       if (spinner) spinner.style.display = 'none';
       
       // Několik fallback pokusů
       if (it.low && img.src !== it.low) {
-        console.info(`Trying fallback to low-res for item ${i}`);
+        IGFS.Console.info(`Trying fallback to low-res for item ${i}`);
         img.src = it.low;
       } else if (it.srcset) {
         // Zkusíme najít jiný obrázek ze srcset
         const srcsetUrls = it.srcset.split(',').map(s => s.trim().split(' ')[0]);
         for (const url of srcsetUrls) {
           if (url && url !== img.src) {
-            console.info(`Trying srcset fallback for item ${i}:`, url);
+            IGFS.Console.info(`Trying srcset fallback for item ${i}:`, url);
             img.src = decodeEntities(url);
             break;
           }
@@ -115,7 +120,7 @@
         if (domImg && (domImg.src || domImg.currentSrc)) {
           const lastResort = domImg.currentSrc || domImg.src;
           if (lastResort !== img.src) {
-            console.info(`Last resort fallback for item ${i}:`, lastResort);
+            IGFS.Console.info(`Last resort fallback for item ${i}:`, lastResort);
             img.src = lastResort;
           }
         }
@@ -157,12 +162,12 @@
             it.hq_preloaded = true;
           }
         }).catch(error => {
-          console.error(`Error upgrading to HQ for slide ${i}:`, error);
+          IGFS.Console.error(`Error upgrading to HQ for slide ${i}:`, error);
         });
       }, 50); // Sníženo z 200ms na 50ms
     } else {
       // FALLBACK: Pokud nemáme ani HQ ani LQ, zkusíme extrahovat ze srcset nebo href
-      console.warn(`No src available for item ${i}, trying fallback:`, it);
+      IGFS.Console.warn(`No src available for item ${i}, trying fallback:`, it);
       img.setAttribute('data-quality', 'unknown');
       
       // Pokus o extrakci z href (jako emergency fallback)
@@ -173,7 +178,7 @@
           const fallbackSrc = domImg.currentSrc || domImg.src;
           img.src = fallbackSrc;
           it.low = fallbackSrc; // Uložíme pro příště
-          console.info(`Found fallback src for item ${i}:`, fallbackSrc);
+          IGFS.Console.info(`Found fallback src for item ${i}:`, fallbackSrc);
         }
       }
     }
@@ -228,7 +233,7 @@
     
     // Informovat o duplicitách
     if (duplicates.length > 0) {
-      console.warn('[IGFS] Duplicates found in carousel items:', duplicates);
+      IGFS.Console.warn('[IGFS] Duplicates found in carousel items:', duplicates);
     }
     
     track.innerHTML = '';
@@ -242,7 +247,7 @@
     
     // Debug info pro nové obrázky
     if (it && (!it.low || !it.node)) {
-      console.warn(`Image ${state.cur} missing data:`, {
+      IGFS.Console.warn(`Image ${state.cur} missing data:`, {
         hasLow: !!it.low,
         hasHq: !!it.hq,
         hasSrcset: !!it.srcset,
@@ -263,7 +268,7 @@
         
         // Debug pro problematické obrázky
         if (!img.src || img.src === window.location.href) {
-          console.error(`Image ${state.cur} has no src:`, {
+          IGFS.Console.error(`Image ${state.cur} has no src:`, {
             imgSrc: img.src,
             itLow: it.low,
             itHq: it.hq,
@@ -359,7 +364,7 @@
             }, 100);
           }
         }).catch(err=>{
-          console.error('bg preload failed', err);
+          IGFS.Console.error('bg preload failed', err);
           toast('background loading failed');
         });
       }
@@ -372,7 +377,11 @@
   // Asynchronní otevření s čekáním na kompletní načtení obrázků
   async function open(){
     if (state.active) return;
-    
+
+    if (IGFS.Debug && IGFS.Debug.debugLog) {
+      IGFS.Debug.debugLog('🚀 Opening IGFS application');
+    }
+
     // Zobraz loading indikátor
     UI.showLoading();
     toast('Načítám obrázky...');
@@ -393,8 +402,12 @@
       state.active = true;
       UI.hideLoading();
       toast(`Načteno ${state.items.length} obrázků v HQ kvalitě`);
+
+      if (IGFS.Debug && IGFS.Debug.debugLog) {
+        IGFS.Debug.debugLog(`✅ IGFS opened with ${state.items.length} images`, 'success');
+      }
     } catch (error) {
-      console.error('Chyba při načítání obrázků:', error);
+      IGFS.Console.error('Chyba při načítání obrázků:', error);
       // Fallback na synchronní verzi
       toast('Používám rychlé načtení (možná low-res)');
       state.items = collectExploreItems();
@@ -414,12 +427,17 @@
 
   function close(){
     if (!state.active) return;
+
+    if (IGFS.Debug && IGFS.Debug.debugLog) {
+      IGFS.Debug.debugLog('🔴 Closing IGFS application');
+    }
+
     state.active = false;
-    
+
     // Animovaný close efekt
     UI.overlay.style.opacity = '0';
     UI.overlay.style.transform = 'scale(0.95)';
-    
+
     setTimeout(() => {
       UI.hideOverlay();
       UI.overlay.style.opacity = '';
@@ -429,9 +447,15 @@
 
   // ---------- Akce toolbaru ----------
   async function toggleQuality(){
-    const newVal = !getPreferHQ();
+    const oldVal = getPreferHQ();
+    const newVal = !oldVal;
     setPreferHQ(newVal);
     toast(newVal ? 'Quality: HQ' : 'Quality: LQ');
+
+    if (IGFS.Debug && IGFS.Debug.debugLog) {
+      IGFS.Debug.debugLog(`🔄 Quality toggled: ${oldVal ? 'HQ' : 'LQ'} → ${newVal ? 'HQ' : 'LQ'}`);
+    }
+
     updateIndex();
     
     try {
@@ -447,7 +471,7 @@
           .map(k => loadForIndexIOS(state.items, k))
       );
     } catch (error) {
-      console.error('Error in toggleQuality:', error);
+      IGFS.Console.error('Error in toggleQuality:', error);
       toast('Chyba při přepínání kvality');
     }
   }
@@ -455,6 +479,11 @@
   // Rozšířená verze manual preload s aktualizací dat
   async function manualPreloadNext(){
     if (state.manualPreloading || bgPreloader.isPreloading) return;
+
+    if (IGFS.Debug && IGFS.Debug.debugLog) {
+      IGFS.Debug.debugLog('🔄 Starting manual preload');
+    }
+
     state.manualPreloading = true;
     UI.preloadBtn.classList.add('preloading');
     UI.preloadBtn.disabled = true;
@@ -506,12 +535,20 @@
       if (jobs.length > 0) {
         await Promise.all(jobs);
         toast(`✓ Preloaded ${jobs.length} HQ images`);
+
+        if (IGFS.Debug && IGFS.Debug.debugLog) {
+          IGFS.Debug.debugLog(`✅ Manual preload completed: ${jobs.length} images`, 'success');
+        }
       } else if (!backgroundAdded) {
         toast('All nearby images already preloaded');
+
+        if (IGFS.Debug && IGFS.Debug.debugLog) {
+          IGFS.Debug.debugLog('ℹ️ Manual preload: no new images to preload', 'info');
+        }
       }
 
     } catch (error) {
-      console.error('Chyba při manual preload:', error);
+      IGFS.Console.error('Chyba při manual preload:', error);
       toast('Chyba při aktualizaci dat');
     } finally {
       state.manualPreloading = false;
@@ -583,7 +620,7 @@
               return;
             }
           } catch (shareError) {
-            console.log('Web Share failed, trying download:', shareError);
+            IGFS.Console.log('Web Share failed, trying download:', shareError);
           }
         }
         
@@ -621,7 +658,7 @@
       }
       
     } catch (error) {
-      console.error('Error saving image:', error);
+      IGFS.Console.error('Error saving image:', error);
       
       // Fallback: přímé otevření obrázku
       toast('Using fallback method...');
@@ -691,6 +728,18 @@
     state, // Export state pro debug
     updateIndex, // Export pro externí použití
     init(){
+      // Kontrola dostupnosti UI metod
+      if (!UI || !UI.setVersion || !UI.toggleBtn) {
+        if (window.IGFS && window.IGFS.Console) {
+          window.IGFS.Console.error('[IGFS App] UI methods not available:', {
+            UI: !!UI,
+            setVersion: !!(UI && UI.setVersion),
+            toggleBtn: !!(UI && UI.toggleBtn)
+          });
+        }
+        return;
+      }
+
       // Verze do FABu
       UI.setVersion(VERSION);
 
@@ -728,7 +777,7 @@
       window.addEventListener('resize', ()=>{ if (state.active) translateTo(state.cur,false); }, {passive:true});
       window.addEventListener('orientationchange', ()=>{ if (state.active) translateTo(state.cur,false); }, {passive:true});
 
-      console.log(`[IGFS iOS] ready — v${VERSION}`);
+      IGFS.Console.log(`[IGFS iOS] ready — v${VERSION}`);
     }
   };
 

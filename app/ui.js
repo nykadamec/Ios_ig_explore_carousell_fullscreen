@@ -2,7 +2,19 @@
 (function(){
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
-  const { ti } = IGFS;
+  // Zkontroluj dostupnost ti funkce
+  let ti = IGFS.ti;
+  if (!ti) {
+    if (window.IGFS && window.IGFS.Console) {
+      window.IGFS.Console.error('[IGFS UI] ti function not available, using fallback');
+    }
+    ti = (name, size = 18) => `<span style="font-size:${size}px;">${name}</span>`;
+  }
+
+  // Debug log na začátku
+  if (window.IGFS && window.IGFS.Console) {
+    window.IGFS.Console.log('[IGFS UI] Starting UI module initialization, ti function available:', !!ti);
+  }
 
   // Vytvoření UI
   const overlay = document.createElement('div'); overlay.className='igfs-overlay';
@@ -32,11 +44,36 @@
   
   overlay.append(track, idxLab, closeBtn, loadingIndicator, menu);
 
-   // Vytvoření toggle buttonu pro fullscreen mód
-  const toggleBtn = document.createElement('button');
-  toggleBtn.className='igfs-fab';
-  toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
-  document.body.appendChild(toggleBtn);
+  // Přidat overlay do DOM
+  if (document.body) {
+    document.body.appendChild(overlay);
+
+    // Vytvoření toggle buttonu pro fullscreen mód
+    const toggleBtn = document.createElement('button');
+    toggleBtn.className='igfs-fab';
+    toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
+    document.body.appendChild(toggleBtn);
+
+    if (window.IGFS && window.IGFS.Console) {
+      window.IGFS.Console.log('[IGFS UI] UI elements added to DOM');
+    }
+  } else {
+    if (window.IGFS && window.IGFS.Console) {
+      window.IGFS.Console.error('[IGFS UI] document.body not available, deferring UI creation');
+    }
+    // Defer UI creation until DOM is ready
+    document.addEventListener('DOMContentLoaded', () => {
+      document.body.appendChild(overlay);
+      const toggleBtn = document.createElement('button');
+      toggleBtn.className='igfs-fab';
+      toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
+      document.body.appendChild(toggleBtn);
+
+      if (window.IGFS && window.IGFS.Console) {
+        window.IGFS.Console.log('[IGFS UI] UI elements added to DOM (deferred)');
+      }
+    });
+  }
 
   // Styly
   const css = `
@@ -136,6 +173,11 @@
   const styleTag=document.createElement('style'); styleTag.textContent=css; document.head.appendChild(styleTag);
 
   // overlay již přidán výše
+
+  // Debug log pro kontrolu vytvoření UI
+  if (window.IGFS && window.IGFS.Console) {
+    window.IGFS.Console.log('[IGFS UI] UI module initialized');
+  }
 
   IGFS.UI = {
     overlay, track, idxLab, closeBtn,
