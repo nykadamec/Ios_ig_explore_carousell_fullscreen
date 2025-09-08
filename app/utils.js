@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
 
-  const VERSION = '0.1.46-ios';
+  const VERSION = '0.1.47-ios';
 
   const ON_IOS = true; // čistě iOS režim (požadavek)
 
@@ -99,13 +99,18 @@
       this.lastPreloadIndex = state.cur;
       
       try {
-        toast('🔄 Loading more images in background...');
+        // Zobrazit loading indikátor
+        if (IGFS.UI) {
+          IGFS.UI.showLoading();
+          IGFS.UI.updateLoadingText('🔄 Loading more images...');
+        }
         
         // Použij loadMoreImagesHoldBottom pro načtení nových obrázků
         const added = await IGFS.Infinite.loadMoreImagesHoldBottom(state, 3000);
         
         if (added) {
-          toast(`✓ Loaded ${state.items.length - this.lastPreloadIndex} new images`);
+          const newCount = state.items.length - this.lastPreloadIndex;
+          toast(`✓ Loaded ${newCount} new images`);
           return true;
         } else {
           toast('No new images found');
@@ -117,6 +122,10 @@
         return false;
       } finally {
         this.isPreloading = false;
+        // Skrýt loading indikátor
+        if (IGFS.UI) {
+          IGFS.UI.hideLoading();
+        }
       }
     }
 

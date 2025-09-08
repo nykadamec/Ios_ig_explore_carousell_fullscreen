@@ -30,6 +30,19 @@
     const slide = document.createElement('div'); slide.className='igfs-slide'; slide.dataset.index=String(i); it.node=slide;
     const img = document.createElement('img'); img.decoding='async'; img.loading='eager'; slide.appendChild(img);
     const spinner = document.createElement('div'); spinner.className='igfs-spinner'; slide.appendChild(spinner);
+    
+    // Listener pro aktualizaci rozměrů po načtení obrázku
+    img.addEventListener('load', () => {
+      if (img.naturalWidth && img.naturalHeight) {
+        it.w = img.naturalWidth;
+        it.h = img.naturalHeight;
+        // Aktualizovat index pokud je to aktuální obrázek
+        if (state.cur === i) {
+          updateIndex();
+        }
+      }
+    });
+    
     // Načti obrázek (iOS)
     loadForIndexIOS(state.items, i);
     // Dvaklik → otevřít post
@@ -47,11 +60,42 @@
 
   function updateIndex(){
     const it = state.items[state.cur];
-    const res = (it && it.w && it.h) ? `${it.w}×${it.h}` : '…';
+    
+    // Detekce skutečné kvality obrázku
+    let actualQuality = 'LQ';
+    if (it && it.node) {
+      const img = it.node.querySelector('img');
+      if (img) {
+        const isHQ = img.getAttribute('data-quality') === 'hq' || 
+                    (it.hq_preloaded && img.src === it.hq) ||
+                    (img.naturalWidth > 1000); // Heuristika pro HQ
+        actualQuality = isHQ ? 'HQ' : 'LQ';
+      }
+    }
+    
+    // Zobrazení rozlišení - zkusit více zdrojů
+    let res = '…';
+    if (it) {
+      if (it.w && it.h && it.w > 0 && it.h > 0) {
+        res = `${it.w}×${it.h}`;
+      } else if (it.node) {
+        const img = it.node.querySelector('img');
+        if (img && (img.naturalWidth || img.width)) {
+          const w = img.naturalWidth || img.width;
+          const h = img.naturalHeight || img.height;
+          if (w > 0 && h > 0) {
+            res = `${w}×${h}`;
+            // Aktualizovat item data
+            it.w = w;
+            it.h = h;
+          }
+        }
+      }
+    }
     
     // Zobrazit indikátor background loading
     const bgLoadingIndicator = bgPreloader.isPreloading ? ' 🔄' : '';
-    UI.idxLab.textContent = `${state.items.length?state.cur+1:0} / ${state.items.length} · ${getPreferHQ()?'HQ':'LQ'} · ${res} · v${VERSION}${bgLoadingIndicator}`;
+    UI.idxLab.textContent = `${state.items.length?state.cur+1:0} / ${state.items.length} · ${actualQuality} · ${res} · v${VERSION}${bgLoadingIndicator}`;
     
     UI.prevBtn.disabled = state.cur <= 0;
     UI.nextBtn.disabled = state.cur >= state.items.length-1;
@@ -394,6 +438,7 @@
 
   // ---------- Public API ----------
   const App = {
+    updateIndex, // Export pro externí použití
     init(){
       // Verze do FABu
       UI.setVersion(VERSION);

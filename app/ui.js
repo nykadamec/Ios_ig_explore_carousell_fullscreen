@@ -87,6 +87,10 @@
     hideOverlay(){ overlay.classList.remove('igfs-show'); document.body.classList.remove('igfs-overlay-active'); },
     showLoading(){ loadingIndicator.style.display = 'flex'; },
     hideLoading(){ loadingIndicator.style.display = 'none'; },
+    updateLoadingText(text) { 
+      const span = loadingIndicator.querySelector('span');
+      if (span) span.textContent = text;
+    },
     setVersion(v){ const e = toggleBtn.querySelector('.igfs-version'); if (e) e.textContent = 'v'+v; }
   };
 })();

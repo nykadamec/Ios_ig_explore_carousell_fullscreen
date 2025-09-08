@@ -67,9 +67,14 @@
       imgEl.classList.remove('igfs-loading');
       const spinner = item.node.querySelector('.igfs-spinner');
       if (spinner) spinner.style.display = 'none';
-      item.w = imgEl.naturalWidth;
-      item.h = imgEl.naturalHeight;
+      // Správně nastavit rozměry z načteného obrázku
+      item.w = imgEl.naturalWidth || imgEl.width || 0;
+      item.h = imgEl.naturalHeight || imgEl.height || 0;
       imgEl.removeEventListener('load', onload);
+      // Aktualizovat index po změně rozměrů
+      if (window.IGFS && window.IGFS.App && window.IGFS.App.updateIndex) {
+        window.IGFS.App.updateIndex();
+      }
     };
     imgEl.addEventListener('load', onload);
     imgEl.setAttribute('data-quality','hq');
@@ -176,9 +181,21 @@
       // Použij loadWithRetry pro konzistentní retry logiku
       const loadedUrl = await loadWithRetry(url, 3, 300);
       if (loadedUrl) {
-        img.src = loadedUrl;
-        it.w = img.naturalWidth || 0;
-        it.h = img.naturalHeight || 0;
+        // Vytvoř nový Image element pro získání skutečných rozměrů
+        const tempImg = new Image();
+        await new Promise((resolve, reject) => {
+          tempImg.onload = () => {
+            // Nastavit rozměry z temp obrázku
+            it.w = tempImg.naturalWidth || tempImg.width || 0;
+            it.h = tempImg.naturalHeight || tempImg.height || 0;
+            // Nastavit src na display element
+            img.src = loadedUrl;
+            resolve();
+          };
+          tempImg.onerror = reject;
+          tempImg.src = loadedUrl;
+        });
+        
         img.classList.remove('igfs-loading');
         if (spinner) spinner.style.display='none';
         return true;
