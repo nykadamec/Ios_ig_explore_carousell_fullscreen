@@ -61,11 +61,27 @@
     track.style.transform  = `translate3d(${-state.cur*window.innerWidth}px,0,0)`;
     updateIndex();
 
-    // Preload sousedy
-    setTimeout(()=> {
-      [state.cur-1, state.cur+1, state.cur+2].forEach(k=>{
-        if (k>=0 && k<state.items.length) loadForIndexIOS(state.items, k);
-      });
+    // Preload sousedních obrázků paralelně
+    const preloadNeighbors = async () => {
+      const neighbors = [state.cur-1, state.cur, state.cur+1, state.cur+2];
+      const preloadPromises = neighbors.filter(k => k >= 0 && k < state.items.length)
+        .map(k => loadForIndexIOS(state.items, k));
+      
+      // Spustit paralelně s omezením na 3 souběžné požadavky
+      const concurrentLimit = 3;
+      const batches = [];
+      for (let i = 0; i < preloadPromises.length; i += concurrentLimit) {
+        batches.push(preloadPromises.slice(i, i + concurrentLimit));
+      }
+      
+      for (const batch of batches) {
+        await Promise.all(batch);
+      }
+    };
+    
+    setTimeout(() => {
+      preloadNeighbors();
+      
       // Pokud se blížíme ke konci, spustíme hold-bottom autoload
       const remaining = state.items.length - 1 - state.cur;
       if (remaining <= 4) {
@@ -171,22 +187,21 @@
     UI.preloadBtn.disabled = true;
 
     try {
-      let cnt = 0;
       const start = state.cur + 1;
       const end = Math.min(start + 8, state.items.length);
       const jobs = [];
       
-      // Nejprve preload existující položky
+      // Preload existující položky
       for (let i = start; i < end; i++){
         const it = state.items[i];
         if (it && !it.hq_preloaded && !it.hq_preload_promise) {
-          jobs.push(preloadHQIntoCache(it).then(()=>{ cnt++; }));
+          jobs.push(preloadHQIntoCache(it));
         }
       }
       
       if (jobs.length > 0) {
         await Promise.all(jobs);
-        toast(`Preloaded ${cnt} HQ images`);
+        toast(`Preloaded ${jobs.length} HQ images`);
       }
 
       // Aktualizace dat - re-scan DOMu pro nové položky
@@ -215,7 +230,7 @@
         }
         toast(`Aktualizováno: +${diff} nových obrázků`);
         updateIndex();
-      } else if (cnt > 0) {
+      } else if (jobs.length > 0) {
         toast('Data aktualizována, žádné nové obrázky');
       } else {
         toast('Všechny obrázky již preloaded a data aktuální');
@@ -242,8 +257,108 @@
   }
 
   async function saveToGalleryCurrent(){
-    // Na iOS: stejné jako download (bez přímého uložení do Photos)
-    return doDownloadCurrent();
+    const it = state.items[state.cur]; if (!it) return;
+    const url = (getPreferHQ() ? (await resolveHQ(it)) : (it.low || await resolveHQ(it)));
+    if (!url){ toast('No image to save'); return; }
+    
+    // Detekce iOS
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    
+    try {
+      toast('Preparing image for save...');
+      
+      // Vytvoř nový obrázek pro cross-origin načtení
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Failed to load image'));
+        // Přidej timestamp pro bypass cache
+        img.src = url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
+      });
+      
+      // Vytvoř canvas a nakresli obrázek
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = img.naturalWidth || img.width;
+      canvas.height = img.naturalHeight || img.height;
+      ctx.drawImage(img, 0, 0);
+      
+      // Konvertuj na blob s vysokou kvalitou
+      const blob = await new Promise((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to create blob'));
+        }, 'image/jpeg', 0.95);
+      });
+      
+      if (isIOS) {
+        // Na iOS: zkus Web Share API nejprve
+        if (navigator.share && navigator.canShare) {
+          try {
+            const file = new File([blob], `instagram_image_${Date.now()}.jpg`, { type: 'image/jpeg' });
+            if (navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'Save to Photos',
+                text: 'Instagram image'
+              });
+              toast('✓ Saved to Photos via Share');
+              return;
+            }
+          } catch (shareError) {
+            console.log('Web Share failed, trying download:', shareError);
+          }
+        }
+        
+        // iOS fallback: vytvoř download link s specifickými atributy
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `instagram_image_${Date.now()}.jpg`;
+        a.style.display = 'none';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        
+        // Simuluj user gesture click
+        a.click();
+        
+        // Cleanup
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(downloadUrl);
+        }, 100);
+        
+        toast('📱 Tap Downloads → Save to Photos');
+        
+      } else {
+        // Non-iOS: standardní download
+        const downloadUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = downloadUrl;
+        a.download = `instagram_image_${Date.now()}.jpg`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(downloadUrl);
+        toast('✓ Image downloaded');
+      }
+      
+    } catch (error) {
+      console.error('Error saving image:', error);
+      
+      // Fallback: přímé otevření obrázku
+      toast('Using fallback method...');
+      openURLWithGesture(url);
+      
+      if (isIOS) {
+        toast('📱 Long-press image → Save to Photos');
+      } else {
+        toast('Right-click → Save image as...');
+      }
+    }
   }
 
   async function copyUrlCurrent(){

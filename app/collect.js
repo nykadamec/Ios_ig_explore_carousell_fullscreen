@@ -60,11 +60,9 @@
   // Asynchronní verze s čekáním na srcset pomocí MutationObserver
   async function collectExploreItemsAsync(timeout = 5000) {
     return new Promise((resolve, reject) => {
-      // Nejprve zkusíme synchronní sbírání
       let items = collectExploreItems();
-      const pendingItems = new Map();
       const completed = new Set();
-      const observers = []; // Track všech observerů pro proper cleanup
+      const observers = [];
       
       // Pro každý obrázek sledujeme změny v srcset
       items.forEach((item, index) => {
@@ -87,7 +85,6 @@
           
           if (newSrcset && newSrcset !== item.srcset) {
             item.srcset = newSrcset;
-            // Okamžitě extrahovat HQ URL
             const best = pickLargestFromSrcset(newSrcset);
             if (best) {
               item.hq = decodeEntities(best);
@@ -96,7 +93,6 @@
           }
         };
 
-        // Observer pro sledování změn
         const observer = new MutationObserver((mutations) => {
           let changed = false;
           mutations.forEach((mutation) => {
@@ -105,22 +101,17 @@
               changed = true;
             }
           });
-          if (changed) {
-            updateItem();
-          }
+          if (changed) updateItem();
         });
 
-        // Track observer pro cleanup
         observers.push(observer);
 
-        // Spustit observer
         observer.observe(img || picture, {
           attributes: true,
           attributeFilter: ['srcset', 'src']
         });
 
-        // Okamžitě zkusit aktualizovat
-        updateItem();
+        updateItem(); // Okamžitě zkusit aktualizovat
 
         // Cleanup po timeoutu
         setTimeout(() => {
@@ -129,10 +120,8 @@
         }, timeout);
       });
 
-      // Pokud všechny items mají kompletní data nebo timeout
       const checkCompletion = () => {
         if (completed.size === items.length) {
-          // Seřadit podle pozice v gridu
           items.sort((A,B)=>{
             const elA = document.querySelector(`a[href^="${A.href}"]`);
             const elB = document.querySelector(`a[href^="${B.href}"]`);
@@ -147,7 +136,6 @@
       };
 
       const observerCleanup = () => {
-        // Disconnect všechny trackované observery
         observers.forEach(obs => {
           try {
             obs.disconnect();
@@ -155,13 +143,11 @@
             console.warn('Failed to disconnect observer:', e);
           }
         });
-        observers.length = 0; // Vyčisti array
+        observers.length = 0;
       };
 
-      // Check periodicky
       const interval = setInterval(checkCompletion, 100);
       
-      // Timeout fallback
       setTimeout(() => {
         clearInterval(interval);
         observerCleanup();

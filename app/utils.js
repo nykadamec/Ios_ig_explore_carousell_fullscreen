@@ -3,14 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
 
-  const VERSION = '0.1.4-ios';
-
-  function isIOS(){
-    const ua = navigator.userAgent || '';
-    const isMobileWebKit = /AppleWebKit/.test(ua) && /Mobile/.test(ua);
-    const isIPadOS = /Macintosh/.test(ua) && 'ontouchend' in document;
-    return isMobileWebKit || isIPadOS;
-  }
+  const VERSION = '0.1.45-ios';
 
   const ON_IOS = true; // čistě iOS režim (požadavek)
 

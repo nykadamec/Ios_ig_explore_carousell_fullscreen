@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
-  const { ti, toast } = IGFS;
+  const { ti } = IGFS;
 
   // Vytvoření UI
   const overlay = document.createElement('div'); overlay.className='igfs-overlay';

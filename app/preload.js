@@ -9,14 +9,52 @@
   function setPreferHQ(v){ preferHQ = !!v; }
   function getPreferHQ(){ return !!preferHQ; }
 
+  // Mapa pro cacheování HQ URL
+  const hqCache = new Map();
+  
+  // Časování cache v milisekundách (5 minut)
+  const CACHE_TTL = 5 * 60 * 1000;
+  
   async function resolveHQ(it){
-    if (it.hq) return it.hq;
-    if (it.srcset){
-      const best = pickLargestFromSrcset(it.srcset);
-      if (best) it.hq = deThumbURL(best);
+    // Kontrola cache
+    if (hqCache.has(it.href)) {
+      const cached = hqCache.get(it.href);
+      if (Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.url;
+      } else {
+        // Vypršela platnost cache, odstranění
+        hqCache.delete(it.href);
+      }
     }
-    if (!it.hq && it.low) it.hq = deThumbURL(it.low);
-    return it.hq || it.low;
+    
+    // Pokud je HQ URL již k dispozici, vraťte ji
+    if (it.hq) {
+      hqCache.set(it.href, { url: it.hq, timestamp: Date.now() });
+      return it.hq;
+    }
+    
+    let bestUrl = null;
+    
+    // Vždy se pokusit získat největší verzi z srcset
+    if (it.srcset) {
+      const best = pickLargestFromSrcset(it.srcset);
+      if (best) {
+        bestUrl = deThumbURL(best);
+      }
+    }
+    
+    // Pokud nebyla největší verze nalezena v srcset, použijte low-res
+    if (!bestUrl && it.low) {
+      bestUrl = deThumbURL(it.low);
+    }
+    
+    // Uložit do cache
+    if (bestUrl) {
+      hqCache.set(it.href, { url: bestUrl, timestamp: Date.now() });
+      it.hq = bestUrl;
+    }
+    
+    return bestUrl || it.low;
   }
 
   function swapDisplayedToHQ(item, hqUrl){
@@ -38,28 +76,43 @@
     imgEl.src = hqUrl;
   }
 
-  // Retry mechanismus s optimalizovaným backoffem pro web
-  async function loadWithRetry(url, maxRetries = 3, baseDelay = 300) {
+  // Pokročilý retry mechanismus s exponenciálním backoffem a detekcí typu chyby
+  async function loadWithRetry(url, maxRetries = 4, baseDelay = 250) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const img = new Image();
         return await new Promise((resolve, reject) => {
           img.onload = () => resolve(img.src);
-          img.onerror = () => {
+          img.onerror = (error) => {
+            const errorType = error.type || 'unknown';
+            console.warn(`Attempt ${attempt} failed for ${url} (type: ${errorType}):`, error);
+            
+            // Pokud je chyba typu "aborted", zkuste okamžitě znovu bez čekání
+            if (errorType === 'abort') {
+              // Žádné čekání pro aborted požadavky
+              reject(new Error(`Aborted attempt ${attempt}`));
+              return;
+            }
+            
             if (attempt === maxRetries) {
               reject(new Error(`Failed to load after ${maxRetries} attempts`));
             } else {
-              reject(new Error(`Attempt ${attempt} failed`));
+              // Exponenciální backoff s jitterem pro lepší distribuci
+              const jitter = Math.random() * 100; // Náhodný jitter 0-100ms
+              const delay = Math.min(baseDelay * Math.pow(2, attempt - 1) + jitter, 5000); // Max 5s
+              console.log(`Retrying in ${delay.toFixed(0)}ms (attempt ${attempt})`);
+              setTimeout(() => reject(error), delay);
             }
           };
           img.crossOrigin = 'anonymous';
+          img.referrerPolicy = 'no-referrer-when-downgrade'; // Pro lepší kompatibilitu
           img.src = url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
         });
       } catch (error) {
-        console.warn(`Attempt ${attempt} failed for ${url}:`, error);
         if (attempt < maxRetries) {
-          // Mírnější backoff: 300ms, 500ms, 800ms místo 500ms, 1s, 2s
-          const delay = baseDelay + (attempt - 1) * 200;
+          // Pokud je chyba v síti, zkuste rychleji
+          const networkErrorTypes = ['network', 'timeout', 'abort'];
+          const delay = networkErrorTypes.includes(error.name) ? 150 : 500;
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -119,74 +172,80 @@
     img.classList.add('igfs-loading'); 
     if (spinner) spinner.style.display='block';
     
-    return new Promise(async (resolve) => {
-      // Retry mechanismus pro zobrazení
-      const loadAttempt = async (attempt) => {
-        if (attempt > 3) {
-          console.warn(`Failed to load image after 3 attempts: ${url}`);
-          img.classList.remove('igfs-loading');
-          if (spinner) spinner.style.display='none';
-          resolve(false);
-          return;
-        }
-
-        const imgLoad = new Image();
-        imgLoad.crossOrigin = 'anonymous';
-        imgLoad.onload = () => {
-          // Nahraď src pouze pokud se načetlo
-          img.src = imgLoad.src;
-          it.w = imgLoad.naturalWidth;
-          it.h = imgLoad.naturalHeight;
-          img.classList.remove('igfs-loading');
-          if (spinner) spinner.style.display='none';
-          resolve(true);
-        };
-        imgLoad.onerror = () => {
-          if (attempt < 3) {
-            // Konzistentní s optimalizovaným backoffem
-            const delay = 300 + (attempt - 1) * 200;
-            setTimeout(() => loadAttempt(attempt + 1), delay);
-          } else {
-            img.classList.remove('igfs-loading');
-            if (spinner) spinner.style.display='none';
-            resolve(false);
-          }
-        };
-        imgLoad.src = url + (url.includes('?') ? '&' : '?') + `t=${Date.now()}`;
-      };
-      
-      loadAttempt(1);
-    });
+    try {
+      // Použij loadWithRetry pro konzistentní retry logiku
+      const loadedUrl = await loadWithRetry(url, 3, 300);
+      if (loadedUrl) {
+        img.src = loadedUrl;
+        it.w = img.naturalWidth || 0;
+        it.h = img.naturalHeight || 0;
+        img.classList.remove('igfs-loading');
+        if (spinner) spinner.style.display='none';
+        return true;
+      } else {
+        throw new Error('Failed to load after retries');
+      }
+    } catch (error) {
+      console.warn(`Failed to load image: ${url}`, error);
+      img.classList.remove('igfs-loading');
+      if (spinner) spinner.style.display='none';
+      return false;
+    }
   }
 
+  // Mapa pro sledování probíhajících načítání obrázků
+  const loadingPromises = new Map();
+  
   async function loadForIndexIOS(items, i){
     const it = items[i]; if (!it || !it.node) return;
     const img = it.node.querySelector('img');
     const spinner = it.node.querySelector('.igfs-spinner');
 
-    if (preferHQ) {
-      if (it.hq_preload_promise) {
-        const pre = await it.hq_preload_promise;
-        if (pre) { 
-          await loadImageIOS(img, pre, it, spinner); 
-          return; 
-        }
-      }
-      if (it.hq_preloaded && it.hq) { 
-        await loadImageIOS(img, it.hq, it, spinner); 
-        return; 
-      }
+    // Kontrola, zda již probíhá načítání pro tento obrázek
+    const loadingKey = `${it.href}-${preferHQ ? 'hq' : 'lq'}`;
+    if (loadingPromises.has(loadingKey)) {
+      // Pokud ano, počkejte na dokončení
+      await loadingPromises.get(loadingKey);
+      return;
     }
 
-    const hq = await resolveHQ(it);
-    const lq = it.low || hq;
-    const firstUrl = preferHQ ? hq : lq;
-    
-    // Zkus HQ s retry, pokud selže, zkus low-res
-    const ok = await loadImageIOS(img, firstUrl, it, spinner);
-    if (!ok && preferHQ && lq && lq !== firstUrl) {
-      console.log('HQ failed, trying low-res fallback');
-      await loadImageIOS(img, lq, it, spinner);
+    try {
+      // Vytvořit promise pro sledování načítání
+      const loadPromise = (async () => {
+        if (preferHQ) {
+          if (it.hq_preload_promise) {
+            const pre = await it.hq_preload_promise;
+            if (pre) { 
+              await loadImageIOS(img, pre, it, spinner); 
+              return; 
+            }
+          }
+          if (it.hq_preloaded && it.hq) { 
+            await loadImageIOS(img, it.hq, it, spinner); 
+            return; 
+          }
+        }
+
+        const hq = await resolveHQ(it);
+        const lq = it.low || hq;
+        const firstUrl = preferHQ ? hq : lq;
+        
+        // Zkus HQ s retry, pokud selže, zkus low-res
+        const ok = await loadImageIOS(img, firstUrl, it, spinner);
+        if (!ok && preferHQ && lq && lq !== firstUrl) {
+          console.log('HQ failed, trying low-res fallback');
+          await loadImageIOS(img, lq, it, spinner);
+        }
+      })();
+      
+      // Uložit promise do mapy
+      loadingPromises.set(loadingKey, loadPromise);
+      
+      // Počkat na dokončení načítání
+      await loadPromise;
+    } finally {
+      // Odstranit promise z mapy po dokončení
+      loadingPromises.delete(loadingKey);
     }
   }
 
