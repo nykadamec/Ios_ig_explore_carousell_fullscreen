@@ -128,6 +128,10 @@
   async function preloadHQIntoCache(item) {
     if (!item || item.hq_preloaded || item.hq_preload_promise) return item.hq_preload_promise;
     
+    if (IGFS.UI && IGFS.UI.debugLog) {
+      IGFS.UI.debugLog(`📥 Starting HQ preload for ${item.href.substring(item.href.lastIndexOf('/') + 1)}`);
+    }
+    
     item.hq_preload_promise = new Promise(async (resolve, reject) => {
       try {
         const hqUrl = await resolveHQ(item);
@@ -153,9 +157,15 @@
           item.hq_preloaded = true;
           item.hq_preload_promise = null;
           swapDisplayedToHQ(item, loadedUrl);
+          if (IGFS.UI && IGFS.UI.debugLog) {
+            IGFS.UI.debugLog(`✅ HQ preload completed for ${item.href.substring(item.href.lastIndexOf('/') + 1)}`, 'success');
+          }
           resolve(loadedUrl);
         } else {
           console.warn('HQ preload failed, falling back to low-res:', item.href);
+          if (IGFS.UI && IGFS.UI.debugLog) {
+            IGFS.UI.debugLog(`⚠️ HQ preload failed, using low-res fallback`, 'warning');
+          }
           item.hq_preloaded = true;
           item.hq_preload_promise = null;
           swapDisplayedToHQ(item, item.low || hqUrl);

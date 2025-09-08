@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   
-  const VERSION = '0.1.49-ios';  const ON_IOS = true; // čistě iOS režim (požadavek)
+  const VERSION = '0.1.50-ios';  const ON_IOS = true; // čistě iOS režim (požadavek) + Debug UI
 
   const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
   const debounce = (fn, t)=>{ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),t); }; };
@@ -87,14 +87,36 @@
     shouldTriggerPreload(currentIndex, totalItems) {
       // Spustit preload pokud je uživatel 5 míst od konce načtených obrázků
       const remaining = totalItems - 1 - currentIndex;
-      return remaining <= this.preloadThreshold && currentIndex !== this.lastPreloadIndex;
+      const shouldTrigger = remaining <= this.preloadThreshold && currentIndex !== this.lastPreloadIndex;
+      
+      if (shouldTrigger) {
+        console.log('[IGFS] Should trigger preload:', {
+          currentIndex,
+          totalItems,
+          remaining,
+          threshold: this.preloadThreshold,
+          lastPreloadIndex: this.lastPreloadIndex,
+          isPreloading: this.isPreloading
+        });
+      }
+      
+      return shouldTrigger;
     }
 
     async triggerBackgroundPreload(state) {
-      if (this.isPreloading) return false;
+      if (this.isPreloading) {
+        console.log('[IGFS] Background preload already in progress, skipping');
+        return false;
+      }
       
       this.isPreloading = true;
       this.lastPreloadIndex = state.cur;
+      
+      console.log('[IGFS] Starting background preload...', {
+        currentIndex: state.cur,
+        totalItems: state.items.length,
+        threshold: this.preloadThreshold
+      });
       
       try {
         // Zobrazit loading indikátor
@@ -103,35 +125,44 @@
           IGFS.UI.updateLoadingText('🔄 Loading more images...');
         }
         
+        console.log('[IGFS] Triggering loadMoreImagesHoldBottom...');
         // Použij loadMoreImagesHoldBottom pro načtení nových obrázků
         const added = await IGFS.Infinite.loadMoreImagesHoldBottom(state, 3000);
+        console.log('[IGFS] loadMoreImagesHoldBottom result:', added);
         
         if (added) {
           const newCount = state.items.length - this.lastPreloadIndex;
-          toast(`✓ Loaded ${newCount} new images`);
+          console.log(`[IGFS] Successfully loaded ${newCount} new images`);
+          IGFS.toast(`✓ Loaded ${newCount} new images`);
           
           // Zajistit správné obnovení overlay pozice
           if (state.active && IGFS.UI && IGFS.UI.overlay) {
             const overlay = IGFS.UI.overlay;
+            console.log('[IGFS] Ensuring overlay is properly restored...');
             // Resetovat overlay styly pro správné zobrazení
             overlay.style.pointerEvents = '';
             overlay.style.zIndex = '';
             overlay.style.position = '';
+            overlay.style.visibility = '';
+            overlay.style.opacity = '';
             // Krátký delay pro stabilizaci
             await new Promise(resolve => setTimeout(resolve, 100));
+            console.log('[IGFS] Overlay restoration completed');
           }
           
           return true;
         } else {
-          toast('No new images found');
+          console.log('[IGFS] No new images found during background preload');
+          IGFS.toast('No new images found');
           return false;
         }
       } catch (error) {
-        console.error('Background preload failed:', error);
-        toast('Background loading failed');
+        console.error('[IGFS] Background preload failed:', error);
+        IGFS.toast('Background loading failed');
         return false;
       } finally {
         this.isPreloading = false;
+        console.log('[IGFS] Background preload completed, cleaning up...');
         // Skrýt loading indikátor
         if (IGFS.UI) {
           IGFS.UI.hideLoading();

@@ -17,6 +17,7 @@
     startX: 0,
     curX: 0,
     manualPreloading: false,
+    bgPreloader, // Export pro debug
   };
 
   // Inicializace background preloaderu
@@ -655,6 +656,7 @@
 
   // ---------- Public API ----------
   const App = {
+    state, // Export state pro debug
     updateIndex, // Export pro externí použití
     init(){
       // Verze do FABu
@@ -673,6 +675,7 @@
       UI.btnSave.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); saveToGalleryCurrent(); });
       UI.btnCopy.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); copyUrlCurrent(); });
       UI.btnOpen.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); openPostCurrent(); });
+      UI.btnDebug.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); UI.toggleDebug(); });
 
       // Gesta
       UI.track.addEventListener('touchstart', onPointerDown, {passive:false});
