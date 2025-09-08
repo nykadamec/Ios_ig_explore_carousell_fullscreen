@@ -376,7 +376,8 @@
     warn: (message) => addLogEntry('warn', message),
     error: (message) => addLogEntry('error', message),
     info: (message) => addLogEntry('info', message),
-    debug: (message) => addLogEntry('debug', message)
+    debug: (message) => addLogEntry('debug', message),
+    getLogs: () => [...consoleState.logs] // Copy logs array for external access
   };
   
   // Auto-initialize if document is already loaded

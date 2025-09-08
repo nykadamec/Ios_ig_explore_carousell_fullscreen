@@ -115,6 +115,7 @@
         <div class="igfs-debug-actions">
           <button class="igfs-debug-action-btn" id="debug-force-load">Force Load New Images</button>
           <button class="igfs-debug-action-btn" id="debug-clear-cache">Clear Preload Cache</button>
+          <button class="igfs-debug-action-btn" id="debug-copy-logs">Copy Debug Logs</button>
           <button class="igfs-debug-action-btn" id="debug-export-state">Export State</button>
         </div>
       </div>
@@ -248,6 +249,73 @@
           }
         } catch (error) {
           IGFS.Debug.debugLog(`❌ Cache clear failed: ${error.message}`, 'error');
+        }
+      });
+    }
+    
+    const copyLogsBtn = document.getElementById('debug-copy-logs');
+    if (copyLogsBtn) {
+      copyLogsBtn.addEventListener('click', async () => {
+        IGFS.Debug.debugLog('📋 Copying debug logs...', 'info');
+        try {
+          // Získej všechny debug logy
+          const allLogs = debugState.logEntries.map(entry => entry.message).join('\n');
+          
+          // Přidej systémové informace
+          const systemInfo = [
+            `=== IGFS Debug Logs (${new Date().toISOString()}) ===`,
+            `Version: ${window.IGFS ? window.IGFS.VERSION : 'Unknown'}`,
+            `User Agent: ${navigator.userAgent}`,
+            `Screen: ${screen.width}x${screen.height}`,
+            `Viewport: ${window.innerWidth}x${window.innerHeight}`,
+            `URL: ${window.location.href}`,
+            `=== LOGS ===`
+          ].join('\n');
+          
+          // Získej console logy pokud jsou dostupné
+          let consoleLogs = '';
+          if (window.IGFS && window.IGFS.Console && window.IGFS.Console.getLogs) {
+            const cLogs = window.IGFS.Console.getLogs();
+            if (cLogs.length > 0) {
+              consoleLogs = '\n=== CONSOLE LOGS ===\n' + cLogs.map(log => 
+                `[${log.timestamp}] ${log.level.toUpperCase()}: ${log.message}`
+              ).join('\n');
+            }
+          }
+          
+          const fullLogContent = systemInfo + '\n' + allLogs + consoleLogs;
+          
+          // Zkus použít Clipboard API
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(fullLogContent);
+            IGFS.Debug.debugLog('✅ Debug logs copied to clipboard', 'success');
+          } else {
+            // Fallback pro starší zařízení
+            const textarea = document.createElement('textarea');
+            textarea.value = fullLogContent;
+            textarea.style.position = 'fixed';
+            textarea.style.left = '-9999px';
+            textarea.style.top = '-9999px';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            
+            try {
+              const successful = document.execCommand('copy');
+              if (successful) {
+                IGFS.Debug.debugLog('✅ Debug logs copied (fallback)', 'success');
+              } else {
+                throw new Error('Copy command failed');
+              }
+            } catch (err) {
+              throw new Error('Fallback copy failed');
+            } finally {
+              document.body.removeChild(textarea);
+            }
+          }
+        } catch (error) {
+          IGFS.Debug.debugLog(`❌ Copy failed: ${error.message}`, 'error');
+          console.error('Copy logs error:', error);
         }
       });
     }

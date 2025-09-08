@@ -1,9 +1,7 @@
 // /app/infinite.js
 (function(){
-  'use strict';        overlay.style.pointerEvents = 'none';
-        overlay.style.zIndex = '1'; // Snížit z-index aby byl pod scrollable obsahem
-        overlay.style.position = 'absolute'; // Zabránit blokování layoutu
-        overlay.style.visibility = 'hidden'; // Úplě skrýt během scrollst IGFS = (window.IGFS = window.IGFS || {});
+  'use strict';
+  const IGFS = (window.IGFS = window.IGFS || {});
   const { sleep, toast } = IGFS;
   const { collectExploreItems, collectExploreItemsAsync } = IGFS;
 
