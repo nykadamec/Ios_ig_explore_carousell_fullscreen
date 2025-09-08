@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
-  const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce } = IGFS;
+  const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce, BackgroundPreloader } = IGFS;
   const { UI } = IGFS;
   const { collectExploreItems, collectExploreItemsAsync } = IGFS;
   const { setPreferHQ, getPreferHQ } = IGFS.Qual;
@@ -18,6 +18,9 @@
     curX: 0,
     manualPreloading: false,
   };
+
+  // Inicializace background preloaderu
+  const bgPreloader = new BackgroundPreloader();
 
   // ---------- Helpers ----------
   function isUI(t){ return !!(t && t.closest('.igfs-btn,.igfs-fab,.igfs-menu,.igfs-loading-indicator')); }
@@ -45,13 +48,17 @@
   function updateIndex(){
     const it = state.items[state.cur];
     const res = (it && it.w && it.h) ? `${it.w}×${it.h}` : '…';
-    UI.idxLab.textContent = `${state.items.length?state.cur+1:0} / ${state.items.length} · ${getPreferHQ()?'HQ':'LQ'} · ${res} · v${VERSION}`;
+    
+    // Zobrazit indikátor background loading
+    const bgLoadingIndicator = bgPreloader.isPreloading ? ' 🔄' : '';
+    UI.idxLab.textContent = `${state.items.length?state.cur+1:0} / ${state.items.length} · ${getPreferHQ()?'HQ':'LQ'} · ${res} · v${VERSION}${bgLoadingIndicator}`;
+    
     UI.prevBtn.disabled = state.cur <= 0;
     UI.nextBtn.disabled = state.cur >= state.items.length-1;
 
     const hasNext = state.cur < state.items.length - 1;
     const hasUnpreloaded = state.items.slice(state.cur + 1, state.cur + 6).some(it => !it.hq_preloaded && !it.hq_preload_promise);
-    UI.preloadBtn.disabled = !hasNext || !hasUnpreloaded;
+    UI.preloadBtn.disabled = !hasNext || !hasUnpreloaded || bgPreloader.isPreloading;
   }
 
   function translateTo(i, animate=true){
@@ -61,45 +68,39 @@
     track.style.transform  = `translate3d(${-state.cur*window.innerWidth}px,0,0)`;
     updateIndex();
 
-    // Preload sousedních obrázků paralelně
-    const preloadNeighbors = async () => {
-      const neighbors = [state.cur-1, state.cur, state.cur+1, state.cur+2];
-      const preloadPromises = neighbors.filter(k => k >= 0 && k < state.items.length)
+    // Optimalizovaný preload systém pro iOS
+    const optimizedPreload = async () => {
+      // 1. Prioritní preload: aktuální a sousední obrázky
+      const priorityIndexes = [state.cur-1, state.cur, state.cur+1];
+      const priorityPromises = priorityIndexes
+        .filter(k => k >= 0 && k < state.items.length)
         .map(k => loadForIndexIOS(state.items, k));
       
-      // Spustit paralelně s omezením na 3 souběžné požadavky
-      const concurrentLimit = 3;
-      const batches = [];
-      for (let i = 0; i < preloadPromises.length; i += concurrentLimit) {
-        batches.push(preloadPromises.slice(i, i + concurrentLimit));
-      }
+      await Promise.all(priorityPromises);
       
-      for (const batch of batches) {
-        await Promise.all(batch);
-      }
-    };
-    
-    setTimeout(() => {
-      preloadNeighbors();
+      // 2. Background preload: další obrázky dopředu
+      await bgPreloader.preloadAhead(state.items, state.cur);
       
-      // Pokud se blížíme ke konci, spustíme hold-bottom autoload
-      const remaining = state.items.length - 1 - state.cur;
-      if (remaining <= 4) {
-        loadMoreImagesHoldBottom(state, 4000).then((added) => {
+      // 3. Kontrola, zda spustit načítání nových obrázků
+      if (bgPreloader.shouldTriggerPreload(state.cur, state.items.length)) {
+        bgPreloader.triggerBackgroundPreload(state).then((added) => {
           if (added) {
-            // přidat nové slidy, zachovat index
+            // Přidat nové slidy do track
             const keep = state.cur;
             const trackWas = track.children.length;
-            // doplníme jen nově přidané
             for (let i = trackWas; i < state.items.length; i++){
               const s = makeSlide(state.items[i], i);
               track.appendChild(s);
             }
+            // Obnovit pozici bez animace
             translateTo(keep, false);
           }
         });
       }
-    }, 60);
+    };
+    
+    // Spustit optimalizovaný preload s malým zpožděním
+    setTimeout(optimizedPreload, 80);
   }
   const translateToDebounced = debounce(translateTo, 20);
   const next = ()=> { if (state.cur < state.items.length-1) translateToDebounced(state.cur+1); };
@@ -181,17 +182,31 @@
 
   // Rozšířená verze manual preload s aktualizací dat
   async function manualPreloadNext(){
-    if (state.manualPreloading) return;
+    if (state.manualPreloading || bgPreloader.isPreloading) return;
     state.manualPreloading = true;
     UI.preloadBtn.classList.add('preloading');
     UI.preloadBtn.disabled = true;
 
     try {
+      // Nejprve zkus background preload pro nové obrázky
+      const backgroundAdded = await bgPreloader.triggerBackgroundPreload(state);
+      
+      if (backgroundAdded) {
+        // Přidat nové slidy
+        const { track } = UI;
+        const trackWas = track.children.length;
+        for (let i = trackWas; i < state.items.length; i++){
+          const s = makeSlide(state.items[i], i);
+          track.appendChild(s);
+        }
+        updateIndex();
+      }
+      
+      // Poté preload existující položky
       const start = state.cur + 1;
       const end = Math.min(start + 8, state.items.length);
       const jobs = [];
       
-      // Preload existující položky
       for (let i = start; i < end; i++){
         const it = state.items[i];
         if (it && !it.hq_preloaded && !it.hq_preload_promise) {
@@ -201,39 +216,9 @@
       
       if (jobs.length > 0) {
         await Promise.all(jobs);
-        toast(`Preloaded ${jobs.length} HQ images`);
-      }
-
-      // Aktualizace dat - re-scan DOMu pro nové položky
-      toast('Aktualizuji data...');
-      const beforeLen = state.items.length;
-      let freshItems;
-      try {
-        freshItems = await collectExploreItemsAsync(2000); // Krátký timeout pro rychlou aktualizaci
-      } catch (e) {
-        console.warn('Async update failed, using sync:', e);
-        freshItems = collectExploreItems();
-      }
-      
-      // Merge nových položek s existujícími (zachovat preload stavy)
-      const mergedItems = mergeKeepState(state.items, freshItems);
-      const diff = mergedItems.length - beforeLen;
-      
-      if (diff > 0) {
-        state.items = mergedItems;
-        // Přidat nové slidy
-        const { track } = UI;
-        const trackWas = track.children.length;
-        for (let i = trackWas; i < state.items.length; i++){
-          const s = makeSlide(state.items[i], i);
-          track.appendChild(s);
-        }
-        toast(`Aktualizováno: +${diff} nových obrázků`);
-        updateIndex();
-      } else if (jobs.length > 0) {
-        toast('Data aktualizována, žádné nové obrázky');
-      } else {
-        toast('Všechny obrázky již preloaded a data aktuální');
+        toast(`✓ Preloaded ${jobs.length} HQ images`);
+      } else if (!backgroundAdded) {
+        toast('All nearby images already preloaded');
       }
 
     } catch (error) {

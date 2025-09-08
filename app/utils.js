@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
 
-  const VERSION = '0.1.45-ios';
+  const VERSION = '0.1.46-ios';
 
   const ON_IOS = true; // čistě iOS režim (požadavek)
 
@@ -76,6 +76,76 @@
     return url.toString();
   }
 
+  // Inteligentní background preload systém
+  class BackgroundPreloader {
+    constructor() {
+      this.isPreloading = false;
+      this.preloadQueue = new Set();
+      this.lastPreloadIndex = -1;
+      this.preloadThreshold = 5; // Spustit preload když je 5 obrázků od konce načtených
+      this.concurrentLimit = 2; // Max 2 souběžné preload operace na iOS
+    }
+
+    shouldTriggerPreload(currentIndex, totalItems) {
+      // Spustit preload pokud je uživatel 5 míst od konce načtených obrázků
+      const remaining = totalItems - 1 - currentIndex;
+      return remaining <= this.preloadThreshold && currentIndex !== this.lastPreloadIndex;
+    }
+
+    async triggerBackgroundPreload(state) {
+      if (this.isPreloading) return false;
+      
+      this.isPreloading = true;
+      this.lastPreloadIndex = state.cur;
+      
+      try {
+        toast('🔄 Loading more images in background...');
+        
+        // Použij loadMoreImagesHoldBottom pro načtení nových obrázků
+        const added = await IGFS.Infinite.loadMoreImagesHoldBottom(state, 3000);
+        
+        if (added) {
+          toast(`✓ Loaded ${state.items.length - this.lastPreloadIndex} new images`);
+          return true;
+        } else {
+          toast('No new images found');
+          return false;
+        }
+      } catch (error) {
+        console.error('Background preload failed:', error);
+        toast('Background loading failed');
+        return false;
+      } finally {
+        this.isPreloading = false;
+      }
+    }
+
+    async preloadAhead(items, currentIndex) {
+      // Preload několik obrázků dopředu (optimalizováno pro iOS)
+      const preloadRange = Math.min(8, items.length - currentIndex - 1);
+      const promises = [];
+      
+      for (let i = 1; i <= preloadRange && promises.length < this.concurrentLimit; i++) {
+        const index = currentIndex + i;
+        if (index < items.length) {
+          const item = items[index];
+          if (item && !item.hq_preloaded && !item.hq_preload_promise) {
+            promises.push(IGFS.Preload.preloadHQIntoCache(item));
+          }
+        }
+      }
+      
+      if (promises.length > 0) {
+        try {
+          await Promise.all(promises);
+          console.log(`Preloaded ${promises.length} images ahead of current position`);
+        } catch (error) {
+          console.warn('Some preload operations failed:', error);
+        }
+      }
+    }
+  }
+
   IGFS.VERSION = VERSION;
   IGFS.ON_IOS = ON_IOS;
   IGFS.sleep = sleep;
@@ -87,4 +157,5 @@
   IGFS.toast = toast;
   IGFS.openURLWithGesture = openURLWithGesture;
   IGFS.buildPostURL = buildPostURL;
+  IGFS.BackgroundPreloader = BackgroundPreloader;
 })();
