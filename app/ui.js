@@ -33,6 +33,26 @@
   overlay.append(track, idxLab, closeBtn, loadingIndicator, menu);
   document.body.appendChild(overlay);
 
+   // Debug: Check floating bar positioning
+   console.log('[IGFS] Creating toggle button:', {
+     position: 'fixed',
+     top: 'calc(env(safe-area-inset-top,0) + 10px)',
+     right: 'calc(env(safe-area-inset-right,0) + 10px)',
+     zIndex: '2147483647',
+     display: 'flex',
+     visibility: 'visible',
+     safeAreaInsets: {
+       top: 'env(safe-area-inset-top,0)',
+       right: 'env(safe-area-inset-right,0)',
+       bottom: 'env(safe-area-inset-bottom,0)',
+       left: 'env(safe-area-inset-left,0)'
+     },
+     viewport: {
+       width: window.innerWidth,
+       height: window.innerHeight,
+       devicePixelRatio: window.devicePixelRatio
+     }
+   });
   const toggleBtn = document.createElement('button');
   toggleBtn.className='igfs-fab';
   toggleBtn.innerHTML = `${ti('images',14)} FS <span class="igfs-version"></span>`;
@@ -47,8 +67,8 @@
   body.igfs-overlay-active>*:not(.igfs-overlay):not(.igfs-fab):not(.igfs-toast-wrap){pointer-events:none!important}
 
   .igfs-track{position:absolute;inset:0;display:flex;height:100%;width:100%;will-change:transform;transition:transform 280ms ease}
-  .igfs-slide{position:relative;flex:0 0 100vw; height:100vh; display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
-  .igfs-slide img{width:100vw;height:100vh;object-fit:contain;object-position:center;display:block;opacity:0;transition:opacity 0.4s ease, filter 0.3s ease, transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)}
+  .igfs-slide{position:relative;flex:0 0 100%; height:100vh; display:flex;align-items:center;justify-content:center;background:#000;overflow:hidden}
+  .igfs-slide img{width:100%;height:100vh;object-fit:contain;object-position:center;display:block;opacity:0;transition:opacity 0.4s ease, filter 0.3s ease, transform 0.2s cubic-bezier(0.2, 0, 0.2, 1)}
   .igfs-slide img.loaded{opacity:1}
   .igfs-slide img:hover{transform:scale(1.02)}
   .igfs-slide img.igfs-loading{filter:blur(6px) saturate(.8) brightness(.9);opacity:0.7}
@@ -73,7 +93,7 @@
   .igfs-menu-btn:active{transform:scale(.95)}
   .igfs-menu-btn:disabled{opacity:0.3;cursor:not-allowed;transform:scale(1)}
 
-  .igfs-fab{position:fixed;top:10px;right:10px;z-index:2147483647!important;padding:6px 10px;font-size:12px;border-radius:999px;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;gap:6px}
+  .igfs-fab{position:fixed;top:calc(env(safe-area-inset-top,0) + 10px);right:calc(env(safe-area-inset-right,0) + 10px);z-index:2147483647!important;padding:6px 10px;font-size:12px;border-radius:999px;border:none;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:center;gap:6px}
   .igfs-fab:hover,.igfs-fab:focus{background:rgba(255,255,255,.15);outline:none}
   .igfs-version{font-size:9px;opacity:0.7;margin-left:6px}
 

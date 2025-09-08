@@ -282,10 +282,21 @@
   }
 
   function translateTo(i, animate=true){
+    console.log('[IGFS] translateTo called:', {
+      targetIndex: i,
+      currentIndex: state.cur,
+      totalItems: state.items.length,
+      animate: animate,
+      viewportWidth: document.documentElement.clientWidth
+    });
     state.cur = clamp(i, 0, state.items.length-1);
     const { track } = UI;
     track.style.transition = animate ? 'transform 280ms ease' : 'none';
-    track.style.transform  = `translate3d(${-state.cur*window.innerWidth}px,0,0)`;
+    // Use clientWidth instead of innerWidth for more consistent calculations
+    const viewportWidth = document.documentElement.clientWidth;
+    const transformValue = `translate3d(${-state.cur*viewportWidth}px,0,0)`;
+    console.log('[IGFS] Setting transform:', transformValue);
+    track.style.transform = transformValue;
     updateIndex();
 
     // Optimalizovaný preload systém pro iOS
@@ -632,6 +643,21 @@
     state.dragging = true;
     state.startX = e.touches ? e.touches[0].clientX : e.clientX;
     state.curX = state.startX;
+  function onPointerDown(e){
+    console.log('[IGFS] onPointerDown:', {
+      active: state.active,
+      dragging: state.dragging,
+      target: e.target.tagName,
+      clientX: e.touches ? e.touches[0].clientX : e.clientX
+    });
+    if (!state.active) return;
+    if (isUI(e.target) || isForm(e.target)) return;
+    state.dragging = true;
+    state.startX = e.touches ? e.touches[0].clientX : e.clientX;
+    state.curX = state.startX;
+    UI.track.style.transition = 'none';
+    e.preventDefault();
+  }
     UI.track.style.transition = 'none';
     e.preventDefault();
   }
@@ -640,14 +666,18 @@
     if (isUI(e.target) || isForm(e.target)) return;
     state.curX = e.touches ? e.touches[0].clientX : e.clientX;
     const dx = state.curX - state.startX;
-    UI.track.style.transform = `translate3d(${(-state.cur*window.innerWidth)+dx}px,0,0)`;
+    // Use consistent viewport width calculation
+    const viewportWidth = document.documentElement.clientWidth;
+    UI.track.style.transform = `translate3d(${(-state.cur*viewportWidth)+dx}px,0,0)`;
     e.preventDefault();
   }, 10);
   function onPointerUp(e){
     if (!state.active || !state.dragging) return;
     state.dragging = false;
     const dx = state.curX - state.startX;
-    const min = Math.max(40, Math.round(window.innerWidth * 0.12));
+    // Use consistent viewport width calculation
+    const viewportWidth = document.documentElement.clientWidth;
+    const min = Math.max(40, Math.round(viewportWidth * 0.12));
     if (dx <= -min && state.cur < state.items.length-1) next();
     else if (dx >=  min && state.cur > 0) prev();
     else translateTo(state.cur);
