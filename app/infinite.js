@@ -78,10 +78,16 @@
 
       // Obnovit původní styly overlayu
       if (wasActive) {
-        overlay.style.pointerEvents = originalStyles.pointerEvents || '';
-        overlay.style.zIndex = originalStyles.zIndex || '';
-        overlay.style.position = originalStyles.position || '';
-        await sleep(50); // Krátký delay pro smooth přechod
+        // Důkladnější reset overlay stylů
+        overlay.style.pointerEvents = originalStyles.pointerEvents === 'none' ? '' : originalStyles.pointerEvents;
+        overlay.style.zIndex = originalStyles.zIndex === '1' ? '' : originalStyles.zIndex;
+        overlay.style.position = originalStyles.position === 'absolute' ? '' : originalStyles.position;
+        
+        // Dodatečné zajištění správného zobrazení
+        overlay.style.display = '';
+        overlay.style.visibility = '';
+        
+        await sleep(100); // Delší delay pro smooth přechod a stabilizaci
       }
 
       // re-scan DOMu s async verzí pro čekání na HQ data

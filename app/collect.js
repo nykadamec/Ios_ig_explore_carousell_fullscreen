@@ -23,25 +23,41 @@
       if (uniq.has(key)) continue;
 
       const img = a.querySelector('img');
-      if (img && (img.src || img.currentSrc)){
-        let srcset = '';
-        const picture = a.querySelector('picture');
-        if (picture){
-          const source = picture.querySelector('source[srcset]');
-          if (source && source.getAttribute('srcset')) srcset = source.getAttribute('srcset');
+      if (img) {
+        // Pokusíme se získat jakýkoliv dostupný src
+        let imgSrc = img.currentSrc || img.src || img.getAttribute('data-src') || '';
+        
+        // Pokud není src, zkusíme srcset
+        if (!imgSrc && img.srcset) {
+          const firstSrcset = img.srcset.split(',')[0];
+          if (firstSrcset) {
+            imgSrc = firstSrcset.trim().split(' ')[0];
+          }
         }
-        if (img.srcset) srcset = img.srcset || srcset;
+        
+        // Pouze pokud máme nějaký src, přidáme položku
+        if (imgSrc) {
+          let srcset = '';
+          const picture = a.querySelector('picture');
+          if (picture){
+            const source = picture.querySelector('source[srcset]');
+            if (source && source.getAttribute('srcset')) srcset = source.getAttribute('srcset');
+          }
+          if (img.srcset) srcset = img.srcset || srcset;
 
-        uniq.set(key, {
-          href: key,
-          low: decodeEntities(img.currentSrc || img.src),
-          srcset,
-          hq: null,
-          w:0, h:0,
-          node:null,
-          hq_preloaded:false,
-          hq_preload_promise:null
-        });
+          uniq.set(key, {
+            href: key,
+            low: decodeEntities(imgSrc),
+            srcset,
+            hq: null,
+            w:0, h:0,
+            node:null,
+            hq_preloaded:false,
+            hq_preload_promise:null
+          });
+        } else {
+          console.warn('No src found for image in link:', href, img);
+        }
       }
     }
     // Seřadit podle pozice v gridu

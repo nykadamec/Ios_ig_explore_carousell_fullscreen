@@ -22,6 +22,33 @@
   // Inicializace background preloaderu
   const bgPreloader = new BackgroundPreloader();
 
+  // Preconnect hints pro rychlejší načítání Instagram obrázků
+  function addPreconnectHints() {
+    const domains = [
+      'instagram.fprg2-1.fna.fbcdn.net',
+      'scontent-prg2-1.cdninstagram.com', 
+      'scontent.cdninstagram.com',
+      'instagram.com'
+    ];
+    
+    domains.forEach(domain => {
+      if (!document.querySelector(`link[href*="${domain}"]`)) {
+        const link = document.createElement('link');
+        link.rel = 'preconnect';
+        link.href = `https://${domain}`;
+        link.crossOrigin = 'anonymous';
+        document.head.appendChild(link);
+      }
+    });
+  }
+  
+  // Spustit preconnect při načtení
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', addPreconnectHints);
+  } else {
+    addPreconnectHints();
+  }
+
   // ---------- Helpers ----------
   function isUI(t){ return !!(t && t.closest('.igfs-btn,.igfs-fab,.igfs-menu,.igfs-loading-indicator')); }
   function isForm(t){ return !!(t && t.closest('input,textarea,button,select,[contenteditable="true"]')); }
@@ -50,14 +77,46 @@
           updateIndex();
         }
       }
+      
+      // Animace fade-in po načtení
+      setTimeout(() => {
+        img.classList.add('loaded');
+        if (spinner) {
+          spinner.style.opacity = '0';
+          setTimeout(() => spinner.style.display = 'none', 200);
+        }
+      }, 50);
     });
     
-    // Error handler
+    // Enhanced error handler
     img.addEventListener('error', () => {
-      console.warn(`Failed to load image for item ${i}:`, it.href);
+      console.warn(`Failed to load image for item ${i}:`, it.href, 'Current src:', img.src);
       if (spinner) spinner.style.display = 'none';
+      
+      // Několik fallback pokusů
       if (it.low && img.src !== it.low) {
+        console.info(`Trying fallback to low-res for item ${i}`);
         img.src = it.low;
+      } else if (it.srcset) {
+        // Zkusíme najít jiný obrázek ze srcset
+        const srcsetUrls = it.srcset.split(',').map(s => s.trim().split(' ')[0]);
+        for (const url of srcsetUrls) {
+          if (url && url !== img.src) {
+            console.info(`Trying srcset fallback for item ${i}:`, url);
+            img.src = decodeEntities(url);
+            break;
+          }
+        }
+      } else {
+        // Poslední pokus - hledání v DOM
+        const domImg = document.querySelector(`a[href="${it.href}"] img`);
+        if (domImg && (domImg.src || domImg.currentSrc)) {
+          const lastResort = domImg.currentSrc || domImg.src;
+          if (lastResort !== img.src) {
+            console.info(`Last resort fallback for item ${i}:`, lastResort);
+            img.src = lastResort;
+          }
+        }
       }
     });
     
@@ -83,7 +142,8 @@
       it.hq_preloaded = true;
     } else if (it.low) {
       img.src = it.low;
-      // Async upgrade na HQ
+      img.setAttribute('data-quality', 'lq');
+      // Rychlý async upgrade na HQ
       setTimeout(() => {
         resolveHQ(it).then(hqUrl => {
           if (hqUrl && hqUrl !== it.low && img.src === it.low) {
@@ -95,15 +155,46 @@
         }).catch(error => {
           console.error(`Error upgrading to HQ for slide ${i}:`, error);
         });
-      }, 200);
+      }, 50); // Sníženo z 200ms na 50ms
+    } else {
+      // FALLBACK: Pokud nemáme ani HQ ani LQ, zkusíme extrahovat ze srcset nebo href
+      console.warn(`No src available for item ${i}, trying fallback:`, it);
+      img.setAttribute('data-quality', 'unknown');
+      
+      // Pokus o extrakci z href (jako emergency fallback)
+      if (it.href) {
+        // Nastavíme placeholder nebo pokusíme se najít obrázek v DOM
+        const domImg = document.querySelector(`a[href="${it.href}"] img`);
+        if (domImg && (domImg.src || domImg.currentSrc)) {
+          const fallbackSrc = domImg.currentSrc || domImg.src;
+          img.src = fallbackSrc;
+          it.low = fallbackSrc; // Uložíme pro příště
+          console.info(`Found fallback src for item ${i}:`, fallbackSrc);
+        }
+      }
     }
     
-    // iOS loading jako backup
+        // Rychlý iOS loading jako backup s větší prioritou
     setTimeout(() => {
-      loadForIndexIOS(state.items, i).catch(error => {
-        console.error(`Error loading image for slide ${i}:`, error);
-      });
-    }, 300);
+      // Pokud obrázek stále nemá src, prioritně spustíme iOS loading
+      if (!img.src || img.src === window.location.href) {
+        console.warn(`Image ${i} has no src, triggering priority iOS loading`);
+        loadForIndexIOS(state.items, i).then(() => {
+          // Po iOS loading zkusíme znovu nastavit src
+          if (state.items[i] && state.items[i].low && !img.src) {
+            img.src = state.items[i].low;
+            img.setAttribute('data-quality', 'lq');
+          }
+        }).catch(error => {
+          console.error(`Error loading image for slide ${i}:`, error);
+        });
+      } else {
+        // Standardní iOS loading pro optimalizaci
+        loadForIndexIOS(state.items, i).catch(error => {
+          console.error(`Error optimizing image for slide ${i}:`, error);
+        });
+      }
+    }, 20); // Sníženo z 100ms na 20ms pro rychlejší reakci
     
     // Dvaklik → otevřít post
     slide.addEventListener('dblclick', ()=>{ 
@@ -124,6 +215,17 @@
   function updateIndex(){
     const it = state.items[state.cur];
     
+    // Debug info pro nové obrázky
+    if (it && (!it.low || !it.node)) {
+      console.warn(`Image ${state.cur} missing data:`, {
+        hasLow: !!it.low,
+        hasHq: !!it.hq,
+        hasSrcset: !!it.srcset,
+        hasNode: !!it.node,
+        href: it.href
+      });
+    }
+    
     // Detekce skutečné kvality obrázku
     let actualQuality = 'LQ';
     if (it && it.node) {
@@ -133,6 +235,16 @@
                     (it.hq_preloaded && img.src === it.hq) ||
                     (img.naturalWidth > 1000); // Heuristika pro HQ
         actualQuality = isHQ ? 'HQ' : 'LQ';
+        
+        // Debug pro problematické obrázky
+        if (!img.src || img.src === window.location.href) {
+          console.error(`Image ${state.cur} has no src:`, {
+            imgSrc: img.src,
+            itLow: it.low,
+            itHq: it.hq,
+            imgNaturalWidth: img.naturalWidth
+          });
+        }
       }
     }
     
@@ -199,16 +311,32 @@
               const s = makeSlide(state.items[i], i);
               track.appendChild(s);
             }
-            // Obnovit pozici bez animace a aktualizovat index
-            translateTo(keep, false);
-            updateIndex();
+            
+            // Zajistit správnou pozici overlay a track
+            setTimeout(() => {
+              // Obnovit pozici bez animace
+              track.style.transition = 'none';
+              track.style.transform = `translate3d(${-keep*window.innerWidth}px,0,0)`;
+              state.cur = keep;
+              
+              // Aktualizovat UI
+              updateIndex();
+              
+              // Obnovit animace po krátké pauze
+              setTimeout(() => {
+                track.style.transition = '';
+              }, 50);
+            }, 100);
           }
+        }).catch(error => {
+          console.error('Background preload failed:', error);
+          toast('Background loading failed');
         });
       }
     };
     
-    // Spustit optimalizovaný preload s malým zpožděním
-    setTimeout(optimizedPreload, 80);
+    // Spustit optimalizovaný preload s menším zpožděním
+    setTimeout(optimizedPreload, 30); // Sníženo z 80ms na 30ms
   }
   const translateToDebounced = debounce(translateTo, 20);
   const next = ()=> { if (state.cur < state.items.length-1) translateToDebounced(state.cur+1); };
@@ -260,7 +388,16 @@
   function close(){
     if (!state.active) return;
     state.active = false;
-    UI.hideOverlay();
+    
+    // Animovaný close efekt
+    UI.overlay.style.opacity = '0';
+    UI.overlay.style.transform = 'scale(0.95)';
+    
+    setTimeout(() => {
+      UI.hideOverlay();
+      UI.overlay.style.opacity = '';
+      UI.overlay.style.transform = '';
+    }, 300);
   }
 
   // ---------- Akce toolbaru ----------
@@ -302,12 +439,28 @@
       if (backgroundAdded) {
         // Přidat nové slidy - makeSlide se postará o načtení obrázků
         const { track } = UI;
+        const keep = state.cur;
         const trackWas = track.children.length;
         for (let i = trackWas; i < state.items.length; i++){
           const s = makeSlide(state.items[i], i);
           track.appendChild(s);
         }
-        updateIndex();
+        
+        // Zajistit správnou pozici overlay a track
+        setTimeout(() => {
+          // Obnovit pozici bez animace
+          track.style.transition = 'none';
+          track.style.transform = `translate3d(${-keep*window.innerWidth}px,0,0)`;
+          state.cur = keep;
+          
+          // Aktualizovat UI
+          updateIndex();
+          
+          // Obnovit animace po krátké pauze
+          setTimeout(() => {
+            track.style.transition = '';
+          }, 50);
+        }, 100);
       }
       
       // Poté preload existující položky
