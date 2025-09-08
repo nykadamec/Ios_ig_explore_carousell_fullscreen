@@ -3,27 +3,35 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   const { sleep, toast } = IGFS;
-  const { collectExploreItems, collectExploreItemsAsync } = IGFS; // Přidáno async verze
+  const { collectExploreItems, collectExploreItemsAsync } = IGFS;
 
   let isLoadingMore = false;
 
   async function loadMoreImagesHoldBottom(state, minHoldMs = 5000){
     if (isLoadingMore) return false;
     isLoadingMore = true;
-    const { UI, App } = IGFS;
+    const { UI } = IGFS;
+    const overlay = UI.overlay;
     const wasActive = state.active;
     
     try {
       UI.showLoading();
       toast('Načítám další obrázky...');
       
-      // Pokud je fullscreen aktivní, dočasně ho skryj pro scroll
-      let overlayHidden = false;
+      // Uložit původní styly overlayu (použij computed styles jako fallback)
+      const computedStyle = window.getComputedStyle(overlay);
+      const originalStyles = {
+        pointerEvents: overlay.style.pointerEvents || computedStyle.pointerEvents || '',
+        zIndex: overlay.style.zIndex || computedStyle.zIndex || '',
+        position: overlay.style.position || computedStyle.position || ''
+      };
+      
+      // Dočasně umožnit scroll pod overlayem bez skrytí
       if (wasActive) {
-        UI.hideOverlay();
-        state.active = false;
-        overlayHidden = true;
-        await sleep(100); // Krátký delay pro kompletní skrytí
+        overlay.style.pointerEvents = 'none';
+        overlay.style.zIndex = '1'; // Snížit z-index aby byl pod scrollable obsahem
+        overlay.style.position = 'absolute'; // Zabránit blokování layoutu
+        await sleep(50); // Krátký delay pro aplikaci stylů
       }
       
       const doc = document.scrollingElement || document.documentElement;
@@ -35,7 +43,7 @@
 
       const started = Date.now();
       let grown = false;
-      let maxAttempts = 50; // Max 5s při 100ms intervalech
+      let maxAttempts = 60; // Max 6s při 100ms intervalech
 
       // drž bottom a sleduj růst scrollHeight
       for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -60,7 +68,7 @@
       }
 
       // Delší grace delay pro kompletní načtení nových obrázků a srcset
-      await sleep(800);
+      await sleep(1000);
 
       // návrat na top až TEĎ
       window.scrollTo({ top: 0, behavior: 'instant' });
@@ -68,11 +76,19 @@
       // Krátký delay pro stabilizaci DOM
       await sleep(200);
 
+      // Obnovit původní styly overlayu
+      if (wasActive) {
+        overlay.style.pointerEvents = originalStyles.pointerEvents || '';
+        overlay.style.zIndex = originalStyles.zIndex || '';
+        overlay.style.position = originalStyles.position || '';
+        await sleep(50); // Krátký delay pro smooth přechod
+      }
+
       // re-scan DOMu s async verzí pro čekání na HQ data
       const beforeLen = state.items.length;
       let fresh;
       try {
-        fresh = await collectExploreItemsAsync(4000); // Delší timeout pro nové obrázky
+        fresh = await collectExploreItemsAsync(5000); // Delší timeout pro nové obrázky
       } catch (e) {
         console.warn('Async collect failed, using sync:', e);
         fresh = collectExploreItems();
@@ -80,18 +96,6 @@
       
       state.items = mergeKeepState(state.items, fresh);
       const diff = state.items.length - beforeLen;
-
-      // Obnov fullscreen stav
-      if (overlayHidden) {
-        state.active = true;
-        UI.showOverlay();
-        // Obnov aktuální pozici
-        const { track } = UI;
-        track.style.transition = 'none';
-        track.style.transform = `translate3d(${-state.cur*window.innerWidth}px,0,0)`;
-        await sleep(50); // Krátký delay pro smooth přechod
-        track.style.transition = 'transform 280ms ease';
-      }
 
       if (diff > 0) {
         toast(`Načteno ${diff} nových obrázků`);
@@ -113,28 +117,36 @@
       console.error('Chyba při načítání dalších obrázků:', error);
       toast('Chyba při načítání - zkuste ručně scrollovat');
       
+      // Obnovit styly overlayu v případě chyby
+      if (wasActive) {
+        overlay.style.pointerEvents = originalStyles.pointerEvents || '';
+        overlay.style.zIndex = originalStyles.zIndex || '';
+        overlay.style.position = originalStyles.position || '';
+      }
+      
       // Fallback na synchronní verzi
       try {
-        if (overlayHidden) {
-          state.active = true;
-          UI.showOverlay();
-        }
         const fresh = collectExploreItems();
-        state.items = mergeKeepState(state.items, fresh);
-        const diff = state.items.length - beforeLen;
+        const merged = mergeKeepState(state.items, fresh);
+        const diff = merged.length - state.items.length;
         if (diff > 0) {
+          state.items = merged;
           toast(`Načteno ${diff} obrázků (fallback)`);
           return true;
+        } else {
+          toast('Žádné nové obrázky (fallback)');
         }
       } catch (e) {
         console.error('Fallback selhal:', e);
+        toast('Kritická chyba při načítání');
       }
       return false;
     } finally {
-      // Zajistit, že overlay je ve správném stavu
-      if (overlayHidden && !state.active) {
-        state.active = true;
-        UI.showOverlay();
+      // Zajistit, že styly overlayu jsou obnoveny
+      if (wasActive) {
+        overlay.style.pointerEvents = originalStyles.pointerEvents || '';
+        overlay.style.zIndex = originalStyles.zIndex || '';
+        overlay.style.position = originalStyles.position || '';
       }
       UI.hideLoading();
       isLoadingMore = false;

@@ -53,12 +53,12 @@
   // ---------- Pořadí modulů ----------
   const MODULES = [
     'utils.js',
-    'icons.js',
-    'ui.js',
+    'icons.js',    // musí být před ui.js (definuje ti())
+    'ui.js',       // používá ti() z icons.js
     'collect.js',
     'preload.js',
-    'infinite.js',
-    'app.js',
+    'infinite.js', // musí být před app.js (definuje mergeKeepState())
+    'app.js',      // používá mergeKeepState() z infinite.js
   ];
 
   (async function boot() {

@@ -4,7 +4,7 @@
   const IGFS = (window.IGFS = window.IGFS || {});
   const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce } = IGFS;
   const { UI } = IGFS;
-  const { collectExploreItems, collectExploreItemsAsync } = IGFS; // Přidáno async verzi
+  const { collectExploreItems, collectExploreItemsAsync } = IGFS;
   const { setPreferHQ, getPreferHQ } = IGFS.Qual;
   const { resolveHQ, preloadHQIntoCache, loadForIndexIOS } = IGFS.Preload;
   const { loadMoreImagesHoldBottom, mergeKeepState } = IGFS.Infinite;
@@ -144,41 +144,90 @@
     setPreferHQ(newVal);
     toast(newVal ? 'Quality: HQ' : 'Quality: LQ');
     updateIndex();
-    await loadForIndexIOS(state.items, state.cur);
-    const it = state.items[state.cur];
-    if (it && it.hq_preloaded && it.hq) IGFS.Preload.swapDisplayedToHQ(it, it.hq);
-    [state.cur-1, state.cur+1].forEach(k=>{ if(k>=0 && k<state.items.length) loadForIndexIOS(state.items, k); });
+    
+    try {
+      await loadForIndexIOS(state.items, state.cur);
+      const it = state.items[state.cur];
+      if (it && it.hq_preloaded && it.hq) IGFS.Preload.swapDisplayedToHQ(it, it.hq);
+      
+      // Async preload sousedních obrázků s error handling
+      const neighbors = [state.cur-1, state.cur+1];
+      await Promise.allSettled(
+        neighbors
+          .filter(k => k >= 0 && k < state.items.length)
+          .map(k => loadForIndexIOS(state.items, k))
+      );
+    } catch (error) {
+      console.error('Error in toggleQuality:', error);
+      toast('Chyba při přepínání kvality');
+    }
   }
 
+  // Rozšířená verze manual preload s aktualizací dat
   async function manualPreloadNext(){
     if (state.manualPreloading) return;
     state.manualPreloading = true;
     UI.preloadBtn.classList.add('preloading');
     UI.preloadBtn.disabled = true;
 
-    let cnt = 0;
-    const start = state.cur + 1;
-    const end = Math.min(start + 8, state.items.length);
-    const jobs = [];
-    for (let i = start; i < end; i++){
-      const it = state.items[i];
-      if (it && !it.hq_preloaded && !it.hq_preload_promise) {
-        jobs.push(preloadHQIntoCache(it).then(()=>{ cnt++; }));
-      }
-    }
-    if (!jobs.length) {
-      toast('All next images already preloaded');
-      state.manualPreloading = false;
-      UI.preloadBtn.classList.remove('preloading');
-      updateIndex();
-      return;
-    }
     try {
-      await Promise.all(jobs);
-      toast(`Preloaded ${cnt} HQ images`);
+      let cnt = 0;
+      const start = state.cur + 1;
+      const end = Math.min(start + 8, state.items.length);
+      const jobs = [];
+      
+      // Nejprve preload existující položky
+      for (let i = start; i < end; i++){
+        const it = state.items[i];
+        if (it && !it.hq_preloaded && !it.hq_preload_promise) {
+          jobs.push(preloadHQIntoCache(it).then(()=>{ cnt++; }));
+        }
+      }
+      
+      if (jobs.length > 0) {
+        await Promise.all(jobs);
+        toast(`Preloaded ${cnt} HQ images`);
+      }
+
+      // Aktualizace dat - re-scan DOMu pro nové položky
+      toast('Aktualizuji data...');
+      const beforeLen = state.items.length;
+      let freshItems;
+      try {
+        freshItems = await collectExploreItemsAsync(2000); // Krátký timeout pro rychlou aktualizaci
+      } catch (e) {
+        console.warn('Async update failed, using sync:', e);
+        freshItems = collectExploreItems();
+      }
+      
+      // Merge nových položek s existujícími (zachovat preload stavy)
+      const mergedItems = mergeKeepState(state.items, freshItems);
+      const diff = mergedItems.length - beforeLen;
+      
+      if (diff > 0) {
+        state.items = mergedItems;
+        // Přidat nové slidy
+        const { track } = UI;
+        const trackWas = track.children.length;
+        for (let i = trackWas; i < state.items.length; i++){
+          const s = makeSlide(state.items[i], i);
+          track.appendChild(s);
+        }
+        toast(`Aktualizováno: +${diff} nových obrázků`);
+        updateIndex();
+      } else if (cnt > 0) {
+        toast('Data aktualizována, žádné nové obrázky');
+      } else {
+        toast('Všechny obrázky již preloaded a data aktuální');
+      }
+
+    } catch (error) {
+      console.error('Chyba při manual preload:', error);
+      toast('Chyba při aktualizaci dat');
     } finally {
       state.manualPreloading = false;
       UI.preloadBtn.classList.remove('preloading');
+      UI.preloadBtn.disabled = false;
       updateIndex();
     }
   }
@@ -224,7 +273,7 @@
     UI.track.style.transition = 'none';
     e.preventDefault();
   }
-  const onPointerMoveDebounced = debounce(function(e){
+  const onPointerMove = debounce(function(e){
     if (!state.active || !state.dragging) return;
     if (isUI(e.target) || isForm(e.target)) return;
     state.curX = e.touches ? e.touches[0].clientX : e.clientX;
@@ -232,7 +281,6 @@
     UI.track.style.transform = `translate3d(${(-state.cur*window.innerWidth)+dx}px,0,0)`;
     e.preventDefault();
   }, 10);
-  function onPointerMove(e){ onPointerMoveDebounced(e); }
   function onPointerUp(e){
     if (!state.active || !state.dragging) return;
     state.dragging = false;

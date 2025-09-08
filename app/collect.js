@@ -64,6 +64,7 @@
       let items = collectExploreItems();
       const pendingItems = new Map();
       const completed = new Set();
+      const observers = []; // Track všech observerů pro proper cleanup
       
       // Pro každý obrázek sledujeme změny v srcset
       items.forEach((item, index) => {
@@ -99,7 +100,7 @@
         const observer = new MutationObserver((mutations) => {
           let changed = false;
           mutations.forEach((mutation) => {
-            if (mutation.type === 'attributes' && 
+            if (mutation.type === 'attributes' &&
                 (mutation.attributeName === 'srcset' || mutation.attributeName === 'src')) {
               changed = true;
             }
@@ -108,6 +109,9 @@
             updateItem();
           }
         });
+
+        // Track observer pro cleanup
+        observers.push(observer);
 
         // Spustit observer
         observer.observe(img || picture, {
@@ -143,12 +147,15 @@
       };
 
       const observerCleanup = () => {
-        // Disconnect all observers (simplified - in real implementation would track all observers)
-        const allObservers = document.querySelectorAll('*');
-        allObservers.forEach(el => {
-          const obs = PerformanceObserver.takeRecords ? null : el._srcsetObserver;
-          if (obs) obs.disconnect();
+        // Disconnect všechny trackované observery
+        observers.forEach(obs => {
+          try {
+            obs.disconnect();
+          } catch (e) {
+            console.warn('Failed to disconnect observer:', e);
+          }
         });
+        observers.length = 0; // Vyčisti array
       };
 
       // Check periodicky

@@ -38,8 +38,8 @@
     imgEl.src = hqUrl;
   }
 
-  // Retry mechanismus s exponenciálním backoffem
-  async function loadWithRetry(url, maxRetries = 3, baseDelay = 500) {
+  // Retry mechanismus s optimalizovaným backoffem pro web
+  async function loadWithRetry(url, maxRetries = 3, baseDelay = 300) {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const img = new Image();
@@ -48,6 +48,8 @@
           img.onerror = () => {
             if (attempt === maxRetries) {
               reject(new Error(`Failed to load after ${maxRetries} attempts`));
+            } else {
+              reject(new Error(`Attempt ${attempt} failed`));
             }
           };
           img.crossOrigin = 'anonymous';
@@ -56,7 +58,8 @@
       } catch (error) {
         console.warn(`Attempt ${attempt} failed for ${url}:`, error);
         if (attempt < maxRetries) {
-          const delay = baseDelay * Math.pow(2, attempt - 1);
+          // Mírnější backoff: 300ms, 500ms, 800ms místo 500ms, 1s, 2s
+          const delay = baseDelay + (attempt - 1) * 200;
           await new Promise(resolve => setTimeout(resolve, delay));
         }
       }
@@ -140,7 +143,8 @@
         };
         imgLoad.onerror = () => {
           if (attempt < 3) {
-            const delay = 300 * Math.pow(2, attempt - 1);
+            // Konzistentní s optimalizovaným backoffem
+            const delay = 300 + (attempt - 1) * 200;
             setTimeout(() => loadAttempt(attempt + 1), delay);
           } else {
             img.classList.remove('igfs-loading');
