@@ -110,7 +110,7 @@
         window.IGFS.Debug.debugLog('🚀 Starting IGFS module loading');
       }
 
-      for (const m of MODULES) {
+      for (const m of modules) {
         IGFS.Console.log(`[IGFS] Loading module: ${m}`);
         try {
           await loadModule(m);
@@ -144,7 +144,13 @@
         window.IGFS.Debug.debugLog('✅ IGFS fully initialized and ready', 'success');
       }
     } catch (e) {
-      IGFS.Console.error('[IGFS] Boot failed:', e);
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      const errorStack = e instanceof Error ? e.stack : 'No stack trace available';
+      IGFS.Console.error('[IGFS] Boot failed:', {
+        message: errorMessage,
+        stack: errorStack,
+        errorObject: e
+      });
       alert('IGFS failed to load modules. See console for details.');
     }
   })();
