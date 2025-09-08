@@ -64,12 +64,36 @@
 
   (async function boot() {
     try {
-      for (const m of MODULES) await loadModule(m);
-
-      if (!window.IGFS || !window.IGFS.App || !window.IGFS.App.init) {
-        throw new Error('App not loaded');
+      console.log('[IGFS] Starting module loading...');
+      for (const m of MODULES) {
+        console.log(`[IGFS] Loading module: ${m}`);
+        try {
+          await loadModule(m);
+          console.log(`[IGFS] Successfully loaded module: ${m}`);
+        } catch (moduleError) {
+          console.error(`[IGFS] Failed to load module ${m}:`, moduleError);
+          throw new Error(`Module load failed: ${m}`);
+        }
       }
+
+      console.log('[IGFS] All modules loaded, checking IGFS object...');
+      if (!window.IGFS) {
+        throw new Error('IGFS object not created');
+      }
+      
+      console.log('[IGFS] IGFS object exists, checking App module...');
+      if (!window.IGFS.App) {
+        throw new Error('App module not loaded');
+      }
+      
+      console.log('[IGFS] App module exists, checking init function...');
+      if (!window.IGFS.App.init) {
+        throw new Error('App.init function not found');
+      }
+      
+      console.log('[IGFS] Initializing App...');
       window.IGFS.App.init();
+      console.log('[IGFS] App initialized successfully');
     } catch (e) {
       console.error('[IGFS] Boot failed:', e);
       alert('IGFS failed to load modules. See console for details.');
