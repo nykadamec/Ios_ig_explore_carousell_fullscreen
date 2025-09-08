@@ -105,7 +105,7 @@
               // Exponenciální backoff s jitterem pro lepší distribuci
               const jitter = Math.random() * 100; // Náhodný jitter 0-100ms
               const delay = Math.min(baseDelay * Math.pow(2, attempt - 1) + jitter, 5000); // Max 5s
-              console.log(`Retrying in ${delay.toFixed(0)}ms (attempt ${attempt})`);
+              // console.log(`Retrying in ${delay.toFixed(0)}ms (attempt ${attempt})`);
               setTimeout(() => reject(error), delay);
             }
           };
@@ -128,8 +128,8 @@
   async function preloadHQIntoCache(item) {
     if (!item || item.hq_preloaded || item.hq_preload_promise) return item.hq_preload_promise;
     
-    if (IGFS.UI && IGFS.UI.debugLog) {
-      IGFS.UI.debugLog(`📥 Starting HQ preload for ${item.href.substring(item.href.lastIndexOf('/') + 1)}`);
+    if (IGFS.Debug && IGFS.Debug.debugLog) {
+      IGFS.Debug.debugLog(`📥 Starting HQ preload for ${item.href.substring(item.href.lastIndexOf('/') + 1)}`);
     }
     
     item.hq_preload_promise = new Promise(async (resolve, reject) => {
@@ -157,14 +157,14 @@
           item.hq_preloaded = true;
           item.hq_preload_promise = null;
           swapDisplayedToHQ(item, loadedUrl);
-          if (IGFS.UI && IGFS.UI.debugLog) {
-            IGFS.UI.debugLog(`✅ HQ preload completed for ${item.href.substring(item.href.lastIndexOf('/') + 1)}`, 'success');
+          if (IGFS.Debug && IGFS.Debug.debugLog) {
+            IGFS.Debug.debugLog(`✅ HQ preload completed for ${item.href.substring(item.href.lastIndexOf('/') + 1)}`, 'success');
           }
           resolve(loadedUrl);
         } else {
           console.warn('HQ preload failed, falling back to low-res:', item.href);
-          if (IGFS.UI && IGFS.UI.debugLog) {
-            IGFS.UI.debugLog(`⚠️ HQ preload failed, using low-res fallback`, 'warning');
+          if (IGFS.Debug && IGFS.Debug.debugLog) {
+            IGFS.Debug.debugLog(`⚠️ HQ preload failed, using low-res fallback`, 'warning');
           }
           item.hq_preloaded = true;
           item.hq_preload_promise = null;
@@ -181,12 +181,12 @@
     return item.hq_preload_promise;
   }
 
-  async function loadImageIOS(img, url, it, spinner){
+  async function loadImageIOS(img, url, item, spinner){
     if (!url) return false;
-    
-    img.classList.add('igfs-loading'); 
+
+    img.classList.add('igfs-loading');
     if (spinner) spinner.style.display='block';
-    
+
     try {
       // Použij loadWithRetry pro konzistentní retry logiku
       const loadedUrl = await loadWithRetry(url, 3, 300);
@@ -196,8 +196,8 @@
         await new Promise((resolve, reject) => {
           tempImg.onload = () => {
             // Nastavit rozměry z temp obrázku
-            it.w = tempImg.naturalWidth || tempImg.width || 0;
-            it.h = tempImg.naturalHeight || tempImg.height || 0;
+            item.w = tempImg.naturalWidth || tempImg.width || 0;
+            item.h = tempImg.naturalHeight || tempImg.height || 0;
             // Nastavit src na display element
             img.src = loadedUrl;
             resolve();
@@ -205,7 +205,7 @@
           tempImg.onerror = reject;
           tempImg.src = loadedUrl;
         });
-        
+
         img.classList.remove('igfs-loading');
         if (spinner) spinner.style.display='none';
         return true;
@@ -224,32 +224,32 @@
   const loadingPromises = new Map();
   
   async function loadForIndexIOS(items, i){
-    const it = items[i]; 
-    if (!it) {
+    const item = items[i];
+    if (!item) {
       console.warn(`loadForIndexIOS: item ${i} not found`);
       return;
     }
-    
-    if (!it.node) {
+
+    if (!item.node) {
       console.warn(`loadForIndexIOS: item ${i} has no node, waiting...`);
       // Počkat krátce a zkusit znovu
       await new Promise(resolve => setTimeout(resolve, 100));
-      if (!it.node) {
+      if (!item.node) {
         console.warn(`loadForIndexIOS: item ${i} still has no node after wait`);
         return;
       }
     }
-    
-    const img = it.node.querySelector('img');
-    const spinner = it.node.querySelector('.igfs-spinner');
-    
+
+    const img = item.node.querySelector('img');
+    const spinner = item.node.querySelector('.igfs-spinner');
+
     if (!img) {
       console.warn(`loadForIndexIOS: item ${i} has no img element`);
       return;
     }
 
     // Kontrola, zda již probíhá načítání pro tento obrázek
-    const loadingKey = `${it.href}-${preferHQ ? 'hq' : 'lq'}`;
+    const loadingKey = `${item.href}-${preferHQ ? 'hq' : 'lq'}`;
     if (loadingPromises.has(loadingKey)) {
       // Pokud ano, počkejte na dokončení
       await loadingPromises.get(loadingKey);
@@ -260,34 +260,34 @@
       // Vytvořit promise pro sledování načítání
       const loadPromise = (async () => {
         if (preferHQ) {
-          if (it.hq_preload_promise) {
-            const pre = await it.hq_preload_promise;
-            if (pre) { 
-              await loadImageIOS(img, pre, it, spinner); 
-              return; 
+          if (item.hq_preload_promise) {
+            const pre = await item.hq_preload_promise;
+            if (pre) {
+              await loadImageIOS(img, pre, item, spinner);
+              return;
             }
           }
-          if (it.hq_preloaded && it.hq) { 
-            await loadImageIOS(img, it.hq, it, spinner); 
-            return; 
+          if (item.hq_preloaded && item.hq) {
+            await loadImageIOS(img, item.hq, item, spinner);
+            return;
           }
         }
 
-        const hq = await resolveHQ(it);
-        const lq = it.low || hq;
+        const hq = await resolveHQ(item);
+        const lq = item.low || hq;
         const firstUrl = preferHQ ? hq : lq;
-        
+
         // Zkus HQ s retry, pokud selže, zkus low-res
-        const ok = await loadImageIOS(img, firstUrl, it, spinner);
+        const ok = await loadImageIOS(img, firstUrl, item, spinner);
         if (!ok && preferHQ && lq && lq !== firstUrl) {
-          console.log('HQ failed, trying low-res fallback');
-          await loadImageIOS(img, lq, it, spinner);
+          // console.log('HQ failed, trying low-res fallback');
+          await loadImageIOS(img, lq, item, spinner);
         }
       })();
-      
+
       // Uložit promise do mapy
       loadingPromises.set(loadingKey, loadPromise);
-      
+
       // Počkat na dokončení načítání
       await loadPromise;
     } finally {

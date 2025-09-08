@@ -1,0 +1,470 @@
+// /app/debug.js
+(function(){
+  'use strict';
+  const IGFS = (window.IGFS = window.IGFS || {});
+  const { ti } = IGFS;
+
+  // Debug Panel Element
+  let debugPanel = null;
+  let debugButton = null;
+
+  function createDebugPanel() {
+    if (debugPanel) return debugPanel;
+
+    debugPanel = document.createElement('div'); 
+    debugPanel.className='igfs-debug-panel';
+    debugPanel.style.display = 'none';
+    
+    const debugHeader = document.createElement('div');
+    debugHeader.className = 'igfs-debug-header';
+    debugHeader.innerHTML = `
+      <div class="igfs-debug-title">${ti('cpu',16)} Debug Panel</div>
+      <button class="igfs-debug-close">${ti('x',14)}</button>
+    `;
+    
+    const debugContent = document.createElement('div');
+    debugContent.className = 'igfs-debug-content';
+    debugContent.innerHTML = `
+      <div class="igfs-debug-section">
+        <div class="igfs-debug-section-title">📊 Performance</div>
+        <div class="igfs-debug-metrics">
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Current Image:</span>
+            <span class="igfs-debug-value" id="debug-current">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Total Images:</span>
+            <span class="igfs-debug-value" id="debug-total">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Preloaded:</span>
+            <span class="igfs-debug-value" id="debug-preloaded">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Loading:</span>
+            <span class="igfs-debug-value" id="debug-loading">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Background Preload:</span>
+            <span class="igfs-debug-value" id="debug-bg-preload">Idle</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Memory Usage:</span>
+            <span class="igfs-debug-value" id="debug-memory">-</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="igfs-debug-section">
+        <div class="igfs-debug-section-title">🖼️ Current Image Info</div>
+        <div class="igfs-debug-metrics">
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">URL:</span>
+            <span class="igfs-debug-value" id="debug-url">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Resolution:</span>
+            <span class="igfs-debug-value" id="debug-resolution">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Quality:</span>
+            <span class="igfs-debug-value" id="debug-quality">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Load Status:</span>
+            <span class="igfs-debug-value" id="debug-load-status">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Has Srcset:</span>
+            <span class="igfs-debug-value" id="debug-srcset">-</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="igfs-debug-section">
+        <div class="igfs-debug-section-title">🔄 Loading Stats</div>
+        <div class="igfs-debug-metrics">
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">DOM Images Found:</span>
+            <span class="igfs-debug-value" id="debug-dom-images">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Last Scroll Height:</span>
+            <span class="igfs-debug-value" id="debug-scroll-height">-</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Infinite Load Status:</span>
+            <span class="igfs-debug-value" id="debug-infinite-status">Ready</span>
+          </div>
+          <div class="igfs-debug-metric">
+            <span class="igfs-debug-label">Last Load Time:</span>
+            <span class="igfs-debug-value" id="debug-last-load">Never</span>
+          </div>
+        </div>
+      </div>
+      
+      <div class="igfs-debug-section">
+        <div class="igfs-debug-section-title">📈 Real-time Log</div>
+        <div class="igfs-debug-log" id="debug-log">
+          <div class="igfs-debug-log-entry">🚀 Debug panel initialized</div>
+        </div>
+      </div>
+      
+      <div class="igfs-debug-section">
+        <div class="igfs-debug-section-title">⚡ Actions</div>
+        <div class="igfs-debug-actions">
+          <button class="igfs-debug-action-btn" id="debug-force-load">Force Load New Images</button>
+          <button class="igfs-debug-action-btn" id="debug-clear-cache">Clear Preload Cache</button>
+          <button class="igfs-debug-action-btn" id="debug-export-state">Export State</button>
+        </div>
+      </div>
+    `;
+    
+    debugPanel.appendChild(debugHeader);
+    debugPanel.appendChild(debugContent);
+    
+    return debugPanel;
+  }
+
+  function createDebugButton() {
+    if (debugButton) return debugButton;
+    
+    debugButton = document.createElement('button'); 
+    debugButton.className='igfs-menu-btn igfs-debug-btn'; 
+    debugButton.title='Debug Info'; 
+    debugButton.innerHTML = ti('bug',18);
+    
+    return debugButton;
+  }
+
+  function addDebugStyles() {
+    const debugCss = `
+    .igfs-debug-panel{position:absolute;right:10px;top:50px;bottom:80px;width:350px;background:rgba(0,0,0,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-radius:12px;border:1px solid rgba(255,255,255,.1);box-shadow:0 20px 40px rgba(0,0,0,.6);z-index:1000;overflow:hidden;transform:translateX(100%);opacity:0;transition:all 0.3s cubic-bezier(0.2, 0, 0.2, 1)}
+    .igfs-debug-panel.igfs-debug-show{transform:translateX(0);opacity:1}
+    
+    .igfs-debug-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.05);border-bottom:1px solid rgba(255,255,255,.08)}
+    .igfs-debug-title{font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;display:flex;align-items:center;gap:6px}
+    .igfs-debug-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;padding:4px;border-radius:4px;display:flex;align-items:center;justify-content:center;transition:background-color .2s}
+    .igfs-debug-close:hover{background:rgba(255,255,255,.1);color:#fff}
+    
+    .igfs-debug-content{height:100%;overflow-y:auto;padding:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.3) transparent}
+    .igfs-debug-content::-webkit-scrollbar{width:6px}
+    .igfs-debug-content::-webkit-scrollbar-track{background:transparent}
+    .igfs-debug-content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:3px}
+    .igfs-debug-content::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5)}
+    
+    .igfs-debug-section{padding:12px 16px;border-bottom:1px solid rgba(255,255,255,.06)}
+    .igfs-debug-section:last-child{border-bottom:none}
+    .igfs-debug-section-title{font:600 12px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:rgba(255,255,255,.9);margin-bottom:8px;display:flex;align-items:center;gap:4px}
+    
+    .igfs-debug-metrics{display:flex;flex-direction:column;gap:6px}
+    .igfs-debug-metric{display:flex;justify-content:space-between;align-items:center;font:400 11px system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+    .igfs-debug-label{color:rgba(255,255,255,.7);flex:1}
+    .igfs-debug-value{color:#fff;font-weight:500;text-align:right;max-width:50%;word-break:break-all;font-size:10px}
+    
+    .igfs-debug-log{max-height:120px;overflow-y:auto;background:rgba(0,0,0,.3);border-radius:6px;padding:8px;font:400 10px 'SF Mono',Consolas,monospace;scrollbar-width:thin}
+    .igfs-debug-log::-webkit-scrollbar{width:4px}
+    .igfs-debug-log::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px}
+    .igfs-debug-log-entry{color:rgba(255,255,255,.8);margin-bottom:4px;line-height:1.3;word-break:break-word}
+    .igfs-debug-log-entry:last-child{margin-bottom:0}
+    .igfs-debug-log-entry.error{color:#ff6b6b}
+    .igfs-debug-log-entry.success{color:#51cf66}
+    .igfs-debug-log-entry.warning{color:#ffd43b}
+    
+    .igfs-debug-actions{display:flex;flex-direction:column;gap:6px}
+    .igfs-debug-action-btn{background:rgba(255,255,255,.08);color:#fff;border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:8px 12px;font:500 11px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;cursor:pointer;transition:all .2s;text-align:left}
+    .igfs-debug-action-btn:hover{background:rgba(255,255,255,.15);border-color:rgba(255,255,255,.25)}
+    .igfs-debug-action-btn:active{transform:scale(.98)}
+    `;
+    
+    const styleTag = document.createElement('style'); 
+    styleTag.textContent = debugCss; 
+    document.head.appendChild(styleTag);
+  }
+
+  function setupDebugEventListeners() {
+    // Debug panel event listeners
+    const debugCloseBtn = debugPanel.querySelector('.igfs-debug-close');
+    if (debugCloseBtn) {
+      debugCloseBtn.addEventListener('click', () => IGFS.Debug.hideDebug());
+    }
+    
+    // Debug action buttons
+    const forceLoadBtn = document.getElementById('debug-force-load');
+    if (forceLoadBtn) {
+      forceLoadBtn.addEventListener('click', async () => {
+        IGFS.Debug.debugLog('🔄 Force loading new images...', 'info');
+        try {
+          const state = window.IGFS && window.IGFS.App && window.IGFS.App.state;
+          if (state && window.IGFS.Infinite) {
+            const result = await window.IGFS.Infinite.loadMoreImagesHoldBottom(state, 2000);
+            IGFS.Debug.debugLog(result ? '✅ Force load successful' : '⚠️ No new images found', 
+              result ? 'success' : 'warning');
+          } else {
+            IGFS.Debug.debugLog('❌ App state not available', 'error');
+          }
+        } catch (error) {
+          IGFS.Debug.debugLog(`❌ Force load failed: ${error.message}`, 'error');
+        }
+      });
+    }
+    
+    const clearCacheBtn = document.getElementById('debug-clear-cache');
+    if (clearCacheBtn) {
+      clearCacheBtn.addEventListener('click', () => {
+        IGFS.Debug.debugLog('🗑️ Clearing preload cache...', 'info');
+        try {
+          const state = window.IGFS && window.IGFS.App && window.IGFS.App.state;
+          if (state && state.items) {
+            let clearedCount = 0;
+            state.items.forEach(item => {
+              if (item.hq_preloaded || item.hq_preload_promise) {
+                item.hq_preloaded = false;
+                item.hq_preload_promise = null;
+                clearedCount++;
+              }
+            });
+            IGFS.Debug.debugLog(`✅ Cleared ${clearedCount} cached items`, 'success');
+          } else {
+            IGFS.Debug.debugLog('❌ App state not available', 'error');
+          }
+        } catch (error) {
+          IGFS.Debug.debugLog(`❌ Cache clear failed: ${error.message}`, 'error');
+        }
+      });
+    }
+    
+    const exportStateBtn = document.getElementById('debug-export-state');
+    if (exportStateBtn) {
+      exportStateBtn.addEventListener('click', () => {
+        IGFS.Debug.debugLog('📤 Exporting state...', 'info');
+        try {
+          const state = window.IGFS && window.IGFS.App && window.IGFS.App.state;
+          if (state) {
+            const exportData = {
+              timestamp: new Date().toISOString(),
+              version: window.IGFS.VERSION,
+              currentIndex: state.cur,
+              totalItems: state.items.length,
+              items: state.items.map((item, index) => ({
+                index,
+                href: item.href,
+                hasLow: !!item.low,
+                hasHq: !!item.hq,
+                preloaded: item.hq_preloaded,
+                loading: !!item.hq_preload_promise,
+                dimensions: item.w && item.h ? `${item.w}x${item.h}` : null
+              }))
+            };
+            
+            const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `igfs-debug-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            IGFS.Debug.debugLog('✅ State exported successfully', 'success');
+          } else {
+            IGFS.Debug.debugLog('❌ App state not available', 'error');
+          }
+        } catch (error) {
+          IGFS.Debug.debugLog(`❌ Export failed: ${error.message}`, 'error');
+        }
+      });
+    }
+  }
+
+  // Debug State
+  const debugState = {
+    isVisible: false,
+    updateInterval: null,
+    logEntries: [],
+    startTime: Date.now()
+  };
+
+  // Debug API
+  const Debug = {
+    init() {
+      debugPanel = createDebugPanel();
+      debugButton = createDebugButton();
+      addDebugStyles();
+      
+      // Add panel to overlay if it exists
+      if (IGFS.UI && IGFS.UI.overlay) {
+        IGFS.UI.overlay.appendChild(debugPanel);
+      }
+      
+      setupDebugEventListeners();
+      this.debugLog('🟢 Debug system initialized');
+      
+      return debugButton;
+    },
+
+    getButton() {
+      return debugButton || this.init();
+    },
+
+    showDebug() {
+      if (!debugPanel) this.init();
+      
+      debugState.isVisible = true;
+      debugPanel.style.display = 'block';
+      setTimeout(() => debugPanel.classList.add('igfs-debug-show'), 10);
+      this.startDebugUpdates();
+      this.debugLog('🟢 Debug panel opened');
+    },
+    
+    hideDebug() {
+      if (!debugPanel) return;
+      
+      debugState.isVisible = false;
+      debugPanel.classList.remove('igfs-debug-show');
+      setTimeout(() => debugPanel.style.display = 'none', 300);
+      this.stopDebugUpdates();
+      this.debugLog('🔴 Debug panel closed');
+    },
+    
+    toggleDebug() {
+      if (debugState.isVisible) {
+        this.hideDebug();
+      } else {
+        this.showDebug();
+      }
+    },
+    
+    debugLog(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const entry = `[${timestamp}] ${message}`;
+      debugState.logEntries.push({ message: entry, type });
+      
+      // Keep only last 50 entries
+      if (debugState.logEntries.length > 50) {
+        debugState.logEntries = debugState.logEntries.slice(-50);
+      }
+      
+      // Update log display if visible
+      if (debugState.isVisible) {
+        this.updateDebugLog();
+      }
+    },
+    
+    updateDebugLog() {
+      const logContainer = document.getElementById('debug-log');
+      if (!logContainer) return;
+      
+      logContainer.innerHTML = debugState.logEntries
+        .slice(-15) // Show only last 15 entries
+        .map(entry => `<div class="igfs-debug-log-entry ${entry.type}">${entry.message}</div>`)
+        .join('');
+      
+      // Auto-scroll to bottom
+      logContainer.scrollTop = logContainer.scrollHeight;
+    },
+    
+    startDebugUpdates() {
+      if (debugState.updateInterval) return;
+      
+      debugState.updateInterval = setInterval(() => {
+        this.updateDebugInfo();
+      }, 500); // Update every 500ms for performance
+      
+      // Initial update
+      this.updateDebugInfo();
+    },
+    
+    stopDebugUpdates() {
+      if (debugState.updateInterval) {
+        clearInterval(debugState.updateInterval);
+        debugState.updateInterval = null;
+      }
+    },
+    
+    updateDebugInfo() {
+      if (!debugState.isVisible) return;
+      
+      try {
+        const state = window.IGFS && window.IGFS.App && window.IGFS.App.state;
+        if (!state) return;
+        
+        // Performance metrics
+        this.updateDebugValue('debug-current', `${state.cur + 1}`);
+        this.updateDebugValue('debug-total', `${state.items.length}`);
+        
+        // Count preloaded images
+        const preloadedCount = state.items.filter(item => item.hq_preloaded).length;
+        const loadingCount = state.items.filter(item => item.hq_preload_promise).length;
+        this.updateDebugValue('debug-preloaded', `${preloadedCount}/${state.items.length}`);
+        this.updateDebugValue('debug-loading', loadingCount);
+        
+        // Background preload status
+        const bgStatus = state.bgPreloader ? 
+          (state.bgPreloader.isPreloading ? 'Loading...' : 'Idle') : 'Not available';
+        this.updateDebugValue('debug-bg-preload', bgStatus);
+        
+        // Memory usage (estimate)
+        const memoryEstimate = this.estimateMemoryUsage(state);
+        this.updateDebugValue('debug-memory', memoryEstimate);
+        
+        // Current image info
+        const currentItem = state.items[state.cur];
+        if (currentItem) {
+          this.updateDebugValue('debug-url', this.truncateUrl(currentItem.href || '-'));
+          this.updateDebugValue('debug-resolution', 
+            currentItem.w && currentItem.h ? `${currentItem.w}×${currentItem.h}` : 'Unknown');
+          this.updateDebugValue('debug-quality', 
+            currentItem.hq_preloaded ? 'HQ' : (currentItem.low ? 'LQ' : 'Unknown'));
+          
+          // Load status
+          const img = currentItem.node && currentItem.node.querySelector('img');
+          const loadStatus = img ? (img.complete ? 'Loaded' : 'Loading') : 'Not rendered';
+          this.updateDebugValue('debug-load-status', loadStatus);
+          this.updateDebugValue('debug-srcset', currentItem.srcset ? 'Yes' : 'No');
+        }
+        
+        // DOM stats
+        const domImages = document.querySelectorAll('main a[role="link"] img, main a[href^="/p/"] img').length;
+        this.updateDebugValue('debug-dom-images', domImages);
+        
+        // Scroll height
+        const scrollHeight = (document.scrollingElement || document.documentElement).scrollHeight;
+        this.updateDebugValue('debug-scroll-height', `${scrollHeight}px`);
+        
+        // Infinite load status
+        const isLoadingMore = window.IGFS && window.IGFS.Infinite && window.IGFS.Infinite.isLoadingMore;
+        this.updateDebugValue('debug-infinite-status', isLoadingMore ? 'Loading...' : 'Ready');
+        
+      } catch (error) {
+        console.error('Debug update error:', error);
+        this.debugLog(`❌ Update error: ${error.message}`, 'error');
+      }
+    },
+    
+    updateDebugValue(id, value) {
+      const element = document.getElementById(id);
+      if (element) {
+        element.textContent = value;
+      }
+    },
+    
+    truncateUrl(url) {
+      if (!url || url.length <= 30) return url;
+      return url.substring(0, 15) + '...' + url.substring(url.length - 10);
+    },
+    
+    estimateMemoryUsage(state) {
+      if (!state || !state.items) return 'Unknown';
+      
+      // Rough estimate: assume average image is ~2MB when loaded
+      const loadedCount = state.items.filter(item => 
+        item.hq_preloaded || (item.node && item.node.querySelector('img[data-quality="hq"]'))
+      ).length;
+      
+      const estimatedMB = Math.round(loadedCount * 2);
+      return `~${estimatedMB}MB`;
+    }
+  };
+
+  IGFS.Debug = Debug;
+})();

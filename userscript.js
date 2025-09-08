@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         IG Explore → Fullscreen Swipe (Loader)
 // @namespace    ig-explore-fullscreen
-// @version      0.16.1
-// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.16.0: Rychlejší načítání obrázků (snížení delay na 20-50ms), preconnect hints pro Instagram servery, pokročilé animace (fade-in, scale, hover efekty), smooth přechody a vylepšené UI interakce.
+// @version      0.18.0
+// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.18.0: Aktualizace verze a data poslední aktualizace - 2025-09-08. Oprava kritických chyb (nedefinované proměnné, syntax chyby), implementace bridge.js pro centralizované propojení modulů, standardizace kódovacího stylu, odstranění debug console.log statements. Vylepšená stabilita a výkon.
 // @author       nykadamec
 // @match        https://www.instagram.com/*explore*
 // @match        https://www.instagram.com/explore/*
@@ -42,11 +42,11 @@
   const getBase = () => {
     try {
       const gm = typeof GM_getValue === 'function' ? GM_getValue(BASE_OVERRIDE_KEY) : null;
-      if (gm) return String(gm).replace(/\/+$/, '/') ;
+      if (gm) return String(gm).replace(/\/+$/, '/');
     } catch {}
     try {
       const ls = localStorage.getItem(BASE_OVERRIDE_KEY);
-      if (ls) return String(ls).replace(/\/+$/, '/') ;
+      if (ls) return String(ls).replace(/\/+$/, '/');
     } catch {}
     return DEFAULT_BASE;
   };

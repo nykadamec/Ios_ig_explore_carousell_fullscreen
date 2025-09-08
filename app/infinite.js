@@ -9,7 +9,7 @@
 
   async function loadMoreImagesHoldBottom(state, minHoldMs = 5000){
     if (isLoadingMore) {
-      if (IGFS.UI && IGFS.UI.debugLog) IGFS.UI.debugLog('⚠️ Load already in progress, skipping');
+      if (IGFS.Debug && IGFS.Debug.debugLog) IGFS.Debug.debugLog('⚠️ Load already in progress, skipping');
       return false;
     }
     isLoadingMore = true;
@@ -17,8 +17,8 @@
     const overlay = UI.overlay;
     const wasActive = state.active;
     
-    if (IGFS.UI && IGFS.UI.debugLog) {
-      IGFS.UI.debugLog(`🚀 Starting loadMoreImagesHoldBottom (minHold: ${minHoldMs}ms)`);
+    if (IGFS.Debug && IGFS.Debug.debugLog) {
+      IGFS.Debug.debugLog(`🚀 Starting loadMoreImagesHoldBottom (minHold: ${minHoldMs}ms)`);
     }
     
     try {
@@ -196,8 +196,8 @@
 
       if (diff > 0) {
         toast(`Načteno ${diff} nových obrázků`);
-        if (IGFS.UI && IGFS.UI.debugLog) {
-          IGFS.UI.debugLog(`✅ Successfully loaded ${diff} new images`, 'success');
+        if (IGFS.Debug && IGFS.Debug.debugLog) {
+          IGFS.Debug.debugLog(`✅ Successfully loaded ${diff} new images`, 'success');
         }
         // Preload nově načtené obrázky
         const newStart = beforeLen;
@@ -211,8 +211,8 @@
         return true;
       } else {
         toast('Žádné nové obrázky nenalezeny');
-        if (IGFS.UI && IGFS.UI.debugLog) {
-          IGFS.UI.debugLog('⚠️ No new images found during load', 'warning');
+        if (IGFS.Debug && IGFS.Debug.debugLog) {
+          IGFS.Debug.debugLog('⚠️ No new images found during load', 'warning');
         }
         return false;
       }

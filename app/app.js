@@ -9,6 +9,9 @@
   const { resolveHQ, preloadHQIntoCache, loadForIndexIOS } = IGFS.Preload;
   const { loadMoreImagesHoldBottom, mergeKeepState } = IGFS.Infinite;
 
+  // Inicializace background preloaderu
+  const bgPreloader = new BackgroundPreloader();
+
   const state = {
     items: [],
     cur: 0,
@@ -19,9 +22,6 @@
     manualPreloading: false,
     bgPreloader, // Export pro debug
   };
-
-  // Inicializace background preloaderu
-  const bgPreloader = new BackgroundPreloader();
 
   // Preconnect hints pro rychlejší načítání Instagram obrázků
   function addPreconnectHints() {
@@ -675,7 +675,15 @@
       UI.btnSave.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); saveToGalleryCurrent(); });
       UI.btnCopy.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); copyUrlCurrent(); });
       UI.btnOpen.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); openPostCurrent(); });
-      UI.btnDebug.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); UI.toggleDebug(); });
+      
+      // Initialize debug after UI is ready
+      UI.initDebug();
+      
+      // Debug button event listener
+      const debugBtn = document.querySelector('.igfs-debug-btn');
+      if (debugBtn) {
+        debugBtn.addEventListener('click', (e)=>{ e.preventDefault(); e.stopPropagation(); IGFS.Debug.toggleDebug(); });
+      }
 
       // Gesta
       UI.track.addEventListener('touchstart', onPointerDown, {passive:false});

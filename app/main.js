@@ -55,6 +55,7 @@
     'utils.js',
     'icons.js',    // musí být před ui.js (definuje ti())
     'ui.js',       // používá ti() z icons.js
+    'debug.js',    // musí být po ui.js a icons.js (používá ti() a UI)
     'collect.js',
     'preload.js',
     'infinite.js', // musí být před app.js (definuje mergeKeepState())

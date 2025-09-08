@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   
-  const VERSION = '0.1.50-ios';  const ON_IOS = true; // čistě iOS režim (požadavek) + Debug UI
+  const VERSION = '0.1.51-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul
 
   const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
   const debounce = (fn, t)=>{ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),t); }; };
@@ -118,6 +118,10 @@
         threshold: this.preloadThreshold
       });
       
+      if (IGFS.Debug && IGFS.Debug.debugLog) {
+        IGFS.Debug.debugLog('🔄 Background preload triggered');
+      }
+      
       try {
         // Zobrazit loading indikátor
         if (IGFS.UI) {
@@ -134,6 +138,10 @@
           const newCount = state.items.length - this.lastPreloadIndex;
           console.log(`[IGFS] Successfully loaded ${newCount} new images`);
           IGFS.toast(`✓ Loaded ${newCount} new images`);
+          
+          if (IGFS.Debug && IGFS.Debug.debugLog) {
+            IGFS.Debug.debugLog(`✅ Background preload added ${newCount} images`, 'success');
+          }
           
           // Zajistit správné obnovení overlay pozice
           if (state.active && IGFS.UI && IGFS.UI.overlay) {
@@ -154,11 +162,21 @@
         } else {
           console.log('[IGFS] No new images found during background preload');
           IGFS.toast('No new images found');
+          
+          if (IGFS.Debug && IGFS.Debug.debugLog) {
+            IGFS.Debug.debugLog('⚠️ Background preload found no new images', 'warning');
+          }
+          
           return false;
         }
       } catch (error) {
         console.error('[IGFS] Background preload failed:', error);
         IGFS.toast('Background loading failed');
+        
+        if (IGFS.Debug && IGFS.Debug.debugLog) {
+          IGFS.Debug.debugLog(`❌ Background preload error: ${error.message}`, 'error');
+        }
+        
         return false;
       } finally {
         this.isPreloading = false;
