@@ -1,6 +1,6 @@
 // /app/main.js
 // IG Explore → Fullscreen Swipe (iOS-only) — Module Orchestrator
-// Načte moduly z /app/* přes GM_xmlhttpRequest (CSP-safe), potom spustí App.init()
+// Načte moduly z /app/* (BASE z window.__IGFS_BASE_RAW__), poté spustí App.init()
 
 (function () {
   'use strict';
@@ -8,30 +8,37 @@
   if (window.__IGFS_ACTIVE__) return;
   window.__IGFS_ACTIVE__ = true;
 
-  // ---------- Konfigurace cesty ----------
-  // Pokud spouštíš z main branch:
-  const BASE_RAW = 'https://raw.githubusercontent.com/nykadamec/Ios_ig_explore_carousell_fullscreen/main/app/';
-  // Pro test jiného commitu/branch můžeš přepsat BASE_RAW přes localStorage/GM_value:
-  try {
-    const override = (typeof GM_getValue === 'function' && GM_getValue('IGFS_APP_BASE')) || localStorage.getItem('IGFS_APP_BASE');
-    if (override) window.__IGFS_BASE_RAW__ = String(override).replace(/\/+$/, '/') ;
-  } catch {}
-  const BASE = window.__IGFS_BASE_RAW__ || BASE_RAW;
+  // ---------- BASE ----------
+  // Preferuj BASE z loaderu; fallback na main/app/
+  const DEFAULT_BASE =
+    'https://raw.githubusercontent.com/nykadamec/Ios_ig_explore_carousell_fullscreen/main/app/';
+  const BASE = (typeof window.__IGFS_BASE_RAW__ === 'string' && window.__IGFS_BASE_RAW__.endsWith('/'))
+    ? window.__IGFS_BASE_RAW__
+    : DEFAULT_BASE;
 
-  // ---------- Mini loader modulu ----------
+  // ---------- GM fetch wrapper ----------
   function gmFetchText(url) {
+    // 1) Preferuj wrapper z loaderu (funguje spolehlivě i v eval kontextu)
+    if (typeof window.__IGFS_GM_FETCH__ === 'function') {
+      return window.__IGFS_GM_FETCH__(url, 20000);
+    }
+    // 2) Fallback: přímo GM_xmlhttpRequest (když je dostupný)
     return new Promise((resolve, reject) => {
       if (typeof GM_xmlhttpRequest !== 'function') {
-        reject(new Error('GM_xmlhttpRequest not available')); return;
+        reject(new Error('GM_xmlhttpRequest not available'));
+        return;
       }
       GM_xmlhttpRequest({
         method: 'GET',
         url,
         headers: { 'Cache-Control': 'no-cache' },
         timeout: 20000,
-        onload: (r) => (r.status >= 200 && r.status < 300) ? resolve(r.responseText) : reject(new Error('HTTP '+r.status)),
+        onload: (r) =>
+          r.status >= 200 && r.status < 300
+            ? resolve(r.responseText)
+            : reject(new Error('HTTP ' + r.status)),
         onerror: () => reject(new Error('Network error')),
-        ontimeout: () => reject(new Error('Timeout'))
+        ontimeout: () => reject(new Error('Timeout')),
       });
     });
   }
@@ -39,8 +46,7 @@
   async function loadModule(filename) {
     const url = BASE + filename;
     const code = await gmFetchText(url);
-    // ESM neumíme přímo, takže každý modul exportuje skrze window.IGFS.<name>
-    // eval s sourceURL kvůli hezčím stackům
+    // Každý modul exportuje přes window.IGFS.*
     new Function(code + `\n//# sourceURL=${url}`)();
   }
 
@@ -58,8 +64,10 @@
   (async function boot() {
     try {
       for (const m of MODULES) await loadModule(m);
-      // Spusť aplikaci
-      if (!window.IGFS || !window.IGFS.App || !window.IGFS.App.init) throw new Error('App not loaded');
+
+      if (!window.IGFS || !window.IGFS.App || !window.IGFS.App.init) {
+        throw new Error('App not loaded');
+      }
       window.IGFS.App.init();
     } catch (e) {
       console.error('[IGFS] Boot failed:', e);
