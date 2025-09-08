@@ -100,17 +100,7 @@
   }
 
   // ---------- Pořadí modulů ----------
-  const MODULES = [
-    'console.js',  // musí být první pro IGFS.Console
-    'utils.js',
-    'icons.js',    // musí být před ui.js (definuje ti())
-    'ui.js',       // používá ti() z icons.js
-    'debug.js',    // musí být po ui.js a icons.js (používá ti() a UI)
-    'collect.js',
-    'preload.js',
-    'infinite.js', // musí být před app.js (definuje mergeKeepState())
-    'app.js',      // používá mergeKeepState() z infinite.js
-  ];
+  const modules = ['console.js', 'utils.js', 'icons.js', 'ui.js', 'collect.js', 'bridge.js', 'infinite.js', 'app.js'];
 
   (async function boot() {
     try {
