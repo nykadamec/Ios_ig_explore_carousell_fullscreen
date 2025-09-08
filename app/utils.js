@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   
-  const VERSION = '0.1.51-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul
+  const VERSION = '0.1.52-ios';  const ON_IOS = true; // čistě iOS režim + Debug UI modul
 
   const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
   const debounce = (fn, t)=>{ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),t); }; };
