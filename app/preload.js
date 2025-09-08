@@ -214,9 +214,29 @@
   const loadingPromises = new Map();
   
   async function loadForIndexIOS(items, i){
-    const it = items[i]; if (!it || !it.node) return;
+    const it = items[i]; 
+    if (!it) {
+      console.warn(`loadForIndexIOS: item ${i} not found`);
+      return;
+    }
+    
+    if (!it.node) {
+      console.warn(`loadForIndexIOS: item ${i} has no node, waiting...`);
+      // Počkat krátce a zkusit znovu
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!it.node) {
+        console.warn(`loadForIndexIOS: item ${i} still has no node after wait`);
+        return;
+      }
+    }
+    
     const img = it.node.querySelector('img');
     const spinner = it.node.querySelector('.igfs-spinner');
+    
+    if (!img) {
+      console.warn(`loadForIndexIOS: item ${i} has no img element`);
+      return;
+    }
 
     // Kontrola, zda již probíhá načítání pro tento obrázek
     const loadingKey = `${it.href}-${preferHQ ? 'hq' : 'lq'}`;

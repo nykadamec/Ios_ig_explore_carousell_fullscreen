@@ -2,10 +2,8 @@
 (function(){
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
-
-  const VERSION = '0.1.47-ios';
-
-  const ON_IOS = true; // čistě iOS režim (požadavek)
+  
+  const VERSION = '0.1.48-ios';  const ON_IOS = true; // čistě iOS režim (požadavek)
 
   const sleep = (ms)=> new Promise(res=> setTimeout(res, ms));
   const debounce = (fn, t)=>{ let id; return (...a)=>{ clearTimeout(id); id=setTimeout(()=>fn(...a),t); }; };

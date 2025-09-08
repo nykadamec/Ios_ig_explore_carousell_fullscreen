@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         IG Explore → Fullscreen Swipe (Loader)
 // @namespace    ig-explore-fullscreen
-// @version      0.15.0
-// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.15: Inteligentní background preload systém, oprava zobrazování rozlišení obrázků, detekce HQ/LQ kvality a vylepšení infinity loading pro iOS Safari.
+// @version      0.15.1
+// @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.15.1: Optimalizace makeSlide() funkce pro načítání obrázků s nejvyšším rozlišením od začátku, oprava syntax chyb a vylepšení stability aplikace.
 // @author       nykadamec
 // @match        https://www.instagram.com/*explore*
 // @match        https://www.instagram.com/explore/*

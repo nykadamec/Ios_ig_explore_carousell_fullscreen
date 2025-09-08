@@ -2,7 +2,7 @@
 (function(){
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
-  const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce, BackgroundPreloader } = IGFS;
+  const { VERSION, clamp, toast, buildPostURL, openURLWithGesture, debounce, BackgroundPreloader, pickLargestFromSrcset, deThumbURL, decodeEntities } = IGFS;
   const { UI } = IGFS;
   const { collectExploreItems, collectExploreItemsAsync } = IGFS;
   const { setPreferHQ, getPreferHQ } = IGFS.Qual;
@@ -27,26 +27,89 @@
   function isForm(t){ return !!(t && t.closest('input,textarea,button,select,[contenteditable="true"]')); }
 
   function makeSlide(it, i){
-    const slide = document.createElement('div'); slide.className='igfs-slide'; slide.dataset.index=String(i); it.node=slide;
-    const img = document.createElement('img'); img.decoding='async'; img.loading='eager'; slide.appendChild(img);
-    const spinner = document.createElement('div'); spinner.className='igfs-spinner'; slide.appendChild(spinner);
+    const slide = document.createElement('div'); 
+    slide.className='igfs-slide'; 
+    slide.dataset.index=String(i); 
+    it.node = slide;
+    
+    const img = document.createElement('img'); 
+    img.decoding='async'; 
+    img.loading='eager'; 
+    slide.appendChild(img);
+    
+    const spinner = document.createElement('div'); 
+    spinner.className='igfs-spinner'; 
+    slide.appendChild(spinner);
     
     // Listener pro aktualizaci rozměrů po načtení obrázku
     img.addEventListener('load', () => {
       if (img.naturalWidth && img.naturalHeight) {
         it.w = img.naturalWidth;
         it.h = img.naturalHeight;
-        // Aktualizovat index pokud je to aktuální obrázek
         if (state.cur === i) {
           updateIndex();
         }
       }
     });
     
-    // Načti obrázek (iOS)
-    loadForIndexIOS(state.items, i);
+    // Error handler
+    img.addEventListener('error', () => {
+      console.warn(`Failed to load image for item ${i}:`, it.href);
+      if (spinner) spinner.style.display = 'none';
+      if (it.low && img.src !== it.low) {
+        img.src = it.low;
+      }
+    });
+    
+    // Inicializace s nejvyšším rozlišením
+    let bestUrl = null;
+    
+    // 1. Zkusit HQ pokud je k dispozici
+    if (it.hq) {
+      bestUrl = it.hq;
+    } else if (it.srcset) {
+      // 2. Extrahovat z srcset
+      const largest = pickLargestFromSrcset(it.srcset);
+      if (largest) {
+        bestUrl = deThumbURL(decodeEntities(largest));
+        it.hq = bestUrl;
+      }
+    }
+    
+    // 3. Nastavit nejlepší dostupný URL
+    if (bestUrl) {
+      img.src = bestUrl;
+      img.setAttribute('data-quality', 'hq');
+      it.hq_preloaded = true;
+    } else if (it.low) {
+      img.src = it.low;
+      // Async upgrade na HQ
+      setTimeout(() => {
+        resolveHQ(it).then(hqUrl => {
+          if (hqUrl && hqUrl !== it.low && img.src === it.low) {
+            img.src = hqUrl;
+            img.setAttribute('data-quality', 'hq');
+            it.hq = hqUrl;
+            it.hq_preloaded = true;
+          }
+        }).catch(error => {
+          console.error(`Error upgrading to HQ for slide ${i}:`, error);
+        });
+      }, 200);
+    }
+    
+    // iOS loading jako backup
+    setTimeout(() => {
+      loadForIndexIOS(state.items, i).catch(error => {
+        console.error(`Error loading image for slide ${i}:`, error);
+      });
+    }, 300);
+    
     // Dvaklik → otevřít post
-    slide.addEventListener('dblclick', ()=>{ if (it && it.href) openURLWithGesture(buildPostURL(it.href)); }, {passive:true});
+    slide.addEventListener('dblclick', ()=>{ 
+      if (it && it.href) openURLWithGesture(buildPostURL(it.href)); 
+    }, {passive:true});
+    
     return slide;
   }
 
@@ -136,8 +199,9 @@
               const s = makeSlide(state.items[i], i);
               track.appendChild(s);
             }
-            // Obnovit pozici bez animace
+            // Obnovit pozici bez animace a aktualizovat index
             translateTo(keep, false);
+            updateIndex();
           }
         });
       }
@@ -236,7 +300,7 @@
       const backgroundAdded = await bgPreloader.triggerBackgroundPreload(state);
       
       if (backgroundAdded) {
-        // Přidat nové slidy
+        // Přidat nové slidy - makeSlide se postará o načtení obrázků
         const { track } = UI;
         const trackWas = track.children.length;
         for (let i = trackWas; i < state.items.length; i++){
@@ -473,4 +537,5 @@
   };
 
   IGFS.App = App;
+  
 })();
