@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
   const { sleep, toast } = IGFS;
-  const { collectExploreItems } = IGFS;
+  const { collectExploreItems, collectExploreItemsAsync } = IGFS; // Přidáno async verze
 
   let isLoadingMore = false;
 
@@ -13,6 +13,7 @@
     const { UI } = IGFS;
     try {
       UI.showLoading();
+      toast('Načítám další obrázky...');
       const doc = document.scrollingElement || document.documentElement;
       const startHeight = doc.scrollHeight;
 
@@ -29,22 +30,41 @@
         if (nowH > startHeight) { grown = true; break; }
       }
 
-      // malý grace delay, kdyby dlaždice právě dorazily
-      if (!grown) await sleep(220);
+      // prodloužený grace delay pro kompletní načtení nových obrázků
+      await sleep(500);
 
       // návrat na top až TEĎ
       window.scrollTo({ top: 0, behavior: 'instant' });
 
-      // re-scan DOMu
+      // re-scan DOMu s async verzí pro čekání na HQ data
       const beforeLen = state.items.length;
-      const fresh = collectExploreItems();
+      const fresh = await collectExploreItemsAsync(3000); // 3s timeout pro nové obrázky
       state.items = mergeKeepState(state.items, fresh);
       const diff = state.items.length - beforeLen;
 
-      if (diff > 0) toast(`Loaded ${diff} new photos`);
-      else toast('No new images found');
-
-      return diff > 0;
+      if (diff > 0) {
+        toast(`Načteno ${diff} nových obrázků`);
+        return true;
+      } else {
+        toast('Žádné nové obrázky nenalezeny');
+        return false;
+      }
+    } catch (error) {
+      console.error('Chyba při načítání dalších obrázků:', error);
+      toast('Chyba při načítání - zkuste ručně scrollovat');
+      // Fallback na synchronní verzi
+      try {
+        const fresh = collectExploreItems();
+        state.items = mergeKeepState(state.items, fresh);
+        const diff = state.items.length - beforeLen;
+        if (diff > 0) {
+          toast(`Načteno ${diff} obrázků (fallback)`)
+          return true;
+        }
+      } catch (e) {
+        console.error('Fallback selhal:', e);
+      }
+      return false;
     } finally {
       UI.hideLoading();
       isLoadingMore = false;
