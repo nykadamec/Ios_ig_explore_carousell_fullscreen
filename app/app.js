@@ -328,7 +328,7 @@
             setTimeout(() => {
               // Obnovit pozici bez animace
               track.style.transition = 'none';
-              track.style.transform = `translate3d(${-keep*window.innerWidth}px,0,0)`;
+              track.style.transform = `translate3d(${-keep*viewportWidth}px,0,0)`;
               state.cur = keep;
               
               // Aktualizovat UI
@@ -462,7 +462,8 @@
         setTimeout(() => {
           // Obnovit pozici bez animace
           track.style.transition = 'none';
-          track.style.transform = `translate3d(${-keep*window.innerWidth}px,0,0)`;
+          const viewportWidth = document.documentElement.clientWidth;
+          track.style.transform = `translate3d(${-keep*viewportWidth}px,0,0)`;
           state.cur = keep;
           
           // Aktualizovat UI
