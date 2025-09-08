@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         IG Explore → Fullscreen Swipe (Loader)
 // @namespace    ig-explore-fullscreen
-// @version      0.14.2
+// @version      0.14.3
 // @description  Loader, který stáhne a spustí /app/main.js z GitHubu (BASE dle main). Autoupdate userscriptu + přepnutí BASE + GM fetch wrapper pro moduly. v0.14: Přidáno HQ image loading s asynchronním sbíráním srcset, retry mechanismusem a lepším error handlingem.
 // @author       nykadamec
 // @match        https://www.instagram.com/*explore*

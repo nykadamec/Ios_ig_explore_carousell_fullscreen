@@ -3,7 +3,7 @@
   'use strict';
   const IGFS = (window.IGFS = window.IGFS || {});
 
-  const VERSION = '0.1.3-ios';
+  const VERSION = '0.1.4-ios';
 
   function isIOS(){
     const ua = navigator.userAgent || '';
